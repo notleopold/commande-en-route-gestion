@@ -58,29 +58,83 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          city: string | null
+          communication_preferences: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          contact_role: string | null
+          country: string | null
           created_at: string
+          delivery_address: string | null
+          documents: string[] | null
           email: string | null
           id: string
+          main_contact_name: string | null
           name: string
+          notes: string | null
+          payment_conditions: string | null
           phone: string | null
+          preferred_language: string | null
+          preferred_transporters: string | null
+          pricing_terms: string | null
+          secondary_contact: string | null
+          status: string | null
+          time_zone: string | null
+          type: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          city?: string | null
+          communication_preferences?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_role?: string | null
+          country?: string | null
           created_at?: string
+          delivery_address?: string | null
+          documents?: string[] | null
           email?: string | null
           id?: string
+          main_contact_name?: string | null
           name: string
+          notes?: string | null
+          payment_conditions?: string | null
           phone?: string | null
+          preferred_language?: string | null
+          preferred_transporters?: string | null
+          pricing_terms?: string | null
+          secondary_contact?: string | null
+          status?: string | null
+          time_zone?: string | null
+          type?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          city?: string | null
+          communication_preferences?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          contact_role?: string | null
+          country?: string | null
           created_at?: string
+          delivery_address?: string | null
+          documents?: string[] | null
           email?: string | null
           id?: string
+          main_contact_name?: string | null
           name?: string
+          notes?: string | null
+          payment_conditions?: string | null
           phone?: string | null
+          preferred_language?: string | null
+          preferred_transporters?: string | null
+          pricing_terms?: string | null
+          secondary_contact?: string | null
+          status?: string | null
+          time_zone?: string | null
+          type?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -404,6 +458,66 @@ export type Database = {
             columns: ["container_id"]
             isOneToOne: false
             referencedRelation: "containers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          currency: string | null
+          id: string
+          notes: string | null
+          order_id: string | null
+          payment_date: string
+          payment_id: string | null
+          payment_method: string | null
+          payment_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          payment_date: string
+          payment_id?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          payment_date?: string
+          payment_id?: string | null
+          payment_method?: string | null
+          payment_status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
