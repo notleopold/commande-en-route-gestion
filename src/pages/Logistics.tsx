@@ -7,10 +7,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, MapPin, Calendar, Truck, Package } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, MapPin, Calendar, Truck, Package, Clock, Eye, Edit } from "lucide-react";
 
 export default function Logistics() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isNewShipmentOpen, setIsNewShipmentOpen] = useState(false);
+  const [isEditShipmentOpen, setIsEditShipmentOpen] = useState(false);
+  const [isViewShipmentOpen, setIsViewShipmentOpen] = useState(false);
+  const [selectedShipment, setSelectedShipment] = useState<any>(null);
+  
   const [logistics] = useState([
     {
       id: "LOG-001",
@@ -18,6 +25,7 @@ export default function Logistics() {
       origin: "Entrepôt Paris",
       destination: "Lyon",
       status: "En transit",
+      progress: 65,
       estimatedDelivery: "2024-01-20",
       actualDelivery: null,
       carrier: "Transport Express",
@@ -29,6 +37,7 @@ export default function Logistics() {
       origin: "Entrepôt Marseille",
       destination: "Nice",
       status: "Livré",
+      progress: 100,
       estimatedDelivery: "2024-01-18",
       actualDelivery: "2024-01-17",
       carrier: "Logistic Pro",
@@ -40,6 +49,7 @@ export default function Logistics() {
       origin: "Entrepôt Lille",
       destination: "Strasbourg", 
       status: "En retard",
+      progress: 40,
       estimatedDelivery: "2024-01-16",
       actualDelivery: null,
       carrier: "Quick Delivery",
@@ -51,6 +61,7 @@ export default function Logistics() {
       origin: "Entrepôt Bordeaux",
       destination: "Toulouse",
       status: "En préparation",
+      progress: 0,
       estimatedDelivery: "2024-01-22",
       actualDelivery: null,
       carrier: "Fast Track",
@@ -58,12 +69,45 @@ export default function Logistics() {
     }
   ]);
 
+  const vehicles = [
+    {
+      id: "VEH-001",
+      driver: "Jean Dupont",
+      status: "En route",
+      currentLocation: "A6 - Sens Paris-Lyon",
+      destination: "Lyon",
+      eta: "14:30",
+      cargo: 3
+    },
+    {
+      id: "VEH-002",
+      driver: "Marie Martin",
+      status: "Chargement",
+      currentLocation: "Entrepôt Marseille",
+      destination: "Toulouse",
+      eta: "16:45",
+      cargo: 2
+    },
+    {
+      id: "VEH-003",
+      driver: "Pierre Durand",
+      status: "Disponible",
+      currentLocation: "Base Bordeaux",
+      destination: "-",
+      eta: "-",
+      cargo: 0
+    },
+  ];
+
   const getStatusBadge = (status: string) => {
     const styles = {
       "En transit": "bg-blue-100 text-blue-800 hover:bg-blue-100",
       "Livré": "bg-green-100 text-green-800 hover:bg-green-100",
       "En retard": "bg-red-100 text-red-800 hover:bg-red-100",
-      "En préparation": "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+      "En préparation": "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
+      "En route": "bg-blue-100 text-blue-800 hover:bg-blue-100",
+      "Chargement": "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
+      "Disponible": "bg-green-100 text-green-800 hover:bg-green-100"
     };
     return <Badge className={styles[status] || ""}>{status}</Badge>;
   };
@@ -75,6 +119,16 @@ export default function Logistics() {
     item.carrier.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleEditShipment = (shipment: any) => {
+    setSelectedShipment(shipment);
+    setIsEditShipmentOpen(true);
+  };
+
+  const handleViewShipment = (shipment: any) => {
+    setSelectedShipment(shipment);
+    setIsViewShipmentOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -83,7 +137,7 @@ export default function Logistics() {
           <p className="text-muted-foreground">Suivez toutes vos expéditions et livraisons</p>
         </div>
         
-        <Dialog>
+        <Dialog open={isNewShipmentOpen} onOpenChange={setIsNewShipmentOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -135,8 +189,8 @@ export default function Logistics() {
                 </div>
               </div>
               <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline">Annuler</Button>
-                <Button>Créer le Suivi</Button>
+                <Button variant="outline" onClick={() => setIsNewShipmentOpen(false)}>Annuler</Button>
+                <Button onClick={() => setIsNewShipmentOpen(false)}>Créer le Suivi</Button>
               </div>
             </div>
           </DialogContent>
@@ -186,69 +240,247 @@ export default function Logistics() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Suivi des Expéditions</CardTitle>
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 w-64"
-              />
+      <Tabs defaultValue="shipments" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="shipments">Expéditions</TabsTrigger>
+          <TabsTrigger value="vehicles">Véhicules</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="shipments" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Suivi des Expéditions</CardTitle>
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8 w-64"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID Logistique</TableHead>
+                    <TableHead>Commande</TableHead>
+                    <TableHead>Origine → Destination</TableHead>
+                    <TableHead>Transporteur</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Progression</TableHead>
+                    <TableHead>Livraison Prévue</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLogistics.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.id}</TableCell>
+                      <TableCell>{item.orderId}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm">{item.origin}</span>
+                          <span className="text-muted-foreground">→</span>
+                          <span className="text-sm">{item.destination}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{item.carrier}</TableCell>
+                      <TableCell>{getStatusBadge(item.status)}</TableCell>
+                      <TableCell>
+                        <div className="space-y-2">
+                          <Progress value={item.progress} className="w-20" />
+                          <span className="text-xs text-muted-foreground">{item.progress}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {item.estimatedDelivery}
+                          {item.actualDelivery && (
+                            <div className="text-xs text-green-600">
+                              Livré: {item.actualDelivery}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleViewShipment(item)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleEditShipment(item)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="vehicles" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>État de la Flotte</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Véhicule</TableHead>
+                    <TableHead>Chauffeur</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Position Actuelle</TableHead>
+                    <TableHead>Destination</TableHead>
+                    <TableHead>ETA</TableHead>
+                    <TableHead>Chargement</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {vehicles.map((vehicle) => (
+                    <TableRow key={vehicle.id}>
+                      <TableCell className="font-medium">{vehicle.id}</TableCell>
+                      <TableCell>{vehicle.driver}</TableCell>
+                      <TableCell>{getStatusBadge(vehicle.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <MapPin className="h-3 w-3 mr-1" />
+                          {vehicle.currentLocation}
+                        </div>
+                      </TableCell>
+                      <TableCell>{vehicle.destination}</TableCell>
+                      <TableCell>
+                        {vehicle.eta !== "-" && (
+                          <div className="flex items-center">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {vehicle.eta}
+                          </div>
+                        )}
+                        {vehicle.eta === "-" && <span className="text-muted-foreground">-</span>}
+                      </TableCell>
+                      <TableCell>
+                        {vehicle.cargo > 0 ? `${vehicle.cargo} commandes` : "Vide"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Dialog for editing shipment */}
+      <Dialog open={isEditShipmentOpen} onOpenChange={setIsEditShipmentOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Modifier l'expédition {selectedShipment?.id}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-carrier">Transporteur</Label>
+              <Input id="edit-carrier" defaultValue={selectedShipment?.carrier} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-status">Statut</Label>
+              <Select defaultValue={selectedShipment?.status}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="En préparation">En préparation</SelectItem>
+                  <SelectItem value="En transit">En transit</SelectItem>
+                  <SelectItem value="Livré">Livré</SelectItem>
+                  <SelectItem value="En retard">En retard</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-progress">Progression (%)</Label>
+              <Input id="edit-progress" type="number" min="0" max="100" defaultValue={selectedShipment?.progress} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-delivery">Livraison estimée</Label>
+              <Input id="edit-delivery" type="date" defaultValue={selectedShipment?.estimatedDelivery} />
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID Logistique</TableHead>
-                <TableHead>Commande</TableHead>
-                <TableHead>Origine → Destination</TableHead>
-                <TableHead>Transporteur</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Livraison Prévue</TableHead>
-                <TableHead>N° Suivi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLogistics.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.id}</TableCell>
-                  <TableCell>{item.orderId}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm">{item.origin}</span>
-                      <span className="text-muted-foreground">→</span>
-                      <span className="text-sm">{item.destination}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{item.carrier}</TableCell>
-                  <TableCell>{getStatusBadge(item.status)}</TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {item.estimatedDelivery}
-                      {item.actualDelivery && (
-                        <div className="text-xs text-green-600">
-                          Livré: {item.actualDelivery}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <code className="text-xs bg-muted px-2 py-1 rounded">
-                      {item.trackingNumber}
-                    </code>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsEditShipmentOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={() => setIsEditShipmentOpen(false)}>
+              Modifier l'expédition
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for viewing shipment details */}
+      <Dialog open={isViewShipmentOpen} onOpenChange={setIsViewShipmentOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Détails de l'expédition {selectedShipment?.id}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Commande liée</Label>
+                <p className="text-sm text-muted-foreground">{selectedShipment?.orderId}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Transporteur</Label>
+                <p className="text-sm text-muted-foreground">{selectedShipment?.carrier}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Origine</Label>
+                <p className="text-sm text-muted-foreground">{selectedShipment?.origin}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Destination</Label>
+                <p className="text-sm text-muted-foreground">{selectedShipment?.destination}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Statut</Label>
+                <div className="mt-1">{selectedShipment && getStatusBadge(selectedShipment.status)}</div>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Progression</Label>
+                <div className="mt-1 space-y-2">
+                  <Progress value={selectedShipment?.progress} className="w-32" />
+                  <span className="text-xs text-muted-foreground">{selectedShipment?.progress}%</span>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Livraison estimée</Label>
+                <p className="text-sm text-muted-foreground">{selectedShipment?.estimatedDelivery}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">N° de suivi</Label>
+                <code className="text-xs bg-muted px-2 py-1 rounded">
+                  {selectedShipment?.trackingNumber}
+                </code>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setIsViewShipmentOpen(false)}>
+              Fermer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -8,11 +8,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Search, Edit, Trash2, UserPlus, Shield, Mail } from "lucide-react";
+import { Plus, Search, Edit, Trash2, UserPlus, Shield, Mail, Eye } from "lucide-react";
 
 const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isNewUserOpen, setIsNewUserOpen] = useState(false);
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [isViewUserOpen, setIsViewUserOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
 
   const users = [
     {
@@ -97,6 +100,16 @@ const Users = () => {
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleEditUser = (user: any) => {
+    setSelectedUser(user);
+    setIsEditUserOpen(true);
+  };
+
+  const handleViewUser = (user: any) => {
+    setSelectedUser(user);
+    setIsViewUserOpen(true);
+  };
 
   const activeUsers = users.filter(u => u.status === "Actif").length;
   const inactiveUsers = users.filter(u => u.status === "Inactif").length;
@@ -254,7 +267,10 @@ const Users = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => handleViewUser(user)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleEditUser(user)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button variant="outline" size="sm" className="text-red-600 hover:text-red-800">
@@ -268,6 +284,122 @@ const Users = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Dialog for editing user */}
+      <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Modifier l'utilisateur {selectedUser?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Nom complet</Label>
+              <Input id="edit-name" defaultValue={selectedUser?.name} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input id="edit-email" type="email" defaultValue={selectedUser?.email} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-role">Rôle</Label>
+              <Select defaultValue={selectedUser?.role?.toLowerCase()}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="employe">Employé</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-status">Statut</Label>
+              <Select defaultValue={selectedUser?.status?.toLowerCase()}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="actif">Actif</SelectItem>
+                  <SelectItem value="inactif">Inactif</SelectItem>
+                  <SelectItem value="suspendu">Suspendu</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsEditUserOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={() => setIsEditUserOpen(false)}>
+              Modifier l'utilisateur
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for viewing user details */}
+      <Dialog open={isViewUserOpen} onOpenChange={setIsViewUserOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Détails de l'utilisateur</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={selectedUser?.avatar} />
+                <AvatarFallback className="text-lg">
+                  {selectedUser && getInitials(selectedUser.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h3 className="text-lg font-semibold">{selectedUser?.name}</h3>
+                <p className="text-muted-foreground">{selectedUser?.email}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Rôle</Label>
+                <div className="mt-1">{selectedUser && getRoleBadge(selectedUser.role)}</div>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Statut</Label>
+                <div className="mt-1">{selectedUser && getStatusBadge(selectedUser.status)}</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Dernière connexion</Label>
+                <p className="text-sm text-muted-foreground">{selectedUser?.lastLogin}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Membre depuis</Label>
+                <p className="text-sm text-muted-foreground">Janvier 2024</p>
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Permissions</Label>
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">Lecture commandes</Badge>
+                  <Badge variant="outline">Écriture commandes</Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">Gestion logistique</Badge>
+                  {selectedUser?.role === "Admin" && (
+                    <Badge variant="destructive">Administration</Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setIsViewUserOpen(false)}>
+              Fermer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

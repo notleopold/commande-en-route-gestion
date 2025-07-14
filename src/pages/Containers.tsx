@@ -7,10 +7,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Container, Package, MapPin, Calendar } from "lucide-react";
+import { Plus, Search, Container, Package, MapPin, Calendar, Eye, Edit } from "lucide-react";
 
 export default function Containers() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [isNewContainerOpen, setIsNewContainerOpen] = useState(false);
+  const [isEditContainerOpen, setIsEditContainerOpen] = useState(false);
+  const [isViewContainerOpen, setIsViewContainerOpen] = useState(false);
+  const [selectedContainer, setSelectedContainer] = useState<any>(null);
   const [containers] = useState([
     {
       id: "CONT-001",
@@ -75,10 +79,20 @@ export default function Containers() {
   };
 
   const filteredContainers = containers.filter(container =>
-    container.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    container.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     container.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
     container.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleEditContainer = (container: any) => {
+    setSelectedContainer(container);
+    setIsEditContainerOpen(true);
+  };
+
+  const handleViewContainer = (container: any) => {
+    setSelectedContainer(container);
+    setIsViewContainerOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -88,7 +102,7 @@ export default function Containers() {
           <p className="text-muted-foreground">Gérez votre flotte de conteneurs et leur utilisation</p>
         </div>
         
-        <Dialog>
+        <Dialog open={isNewContainerOpen} onOpenChange={setIsNewContainerOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -148,8 +162,8 @@ export default function Containers() {
                 </Select>
               </div>
               <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline">Annuler</Button>
-                <Button>Ajouter le Conteneur</Button>
+                <Button variant="outline" onClick={() => setIsNewContainerOpen(false)}>Annuler</Button>
+                <Button onClick={() => setIsNewContainerOpen(false)}>Ajouter le Conteneur</Button>
               </div>
             </div>
           </DialogContent>
@@ -226,7 +240,7 @@ export default function Containers() {
                 <TableHead>Capacité</TableHead>
                 <TableHead>Poids</TableHead>
                 <TableHead>Commandes</TableHead>
-                <TableHead>Dernière MAJ</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -268,8 +282,15 @@ export default function Containers() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {container.lastUpdate}
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handleViewContainer(container)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleEditContainer(container)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

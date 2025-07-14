@@ -12,6 +12,11 @@ import { Plus, Search, Filter, Eye, Edit, Trash2 } from "lucide-react";
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [isNewOrderOpen, setIsNewOrderOpen] = useState(false);
+  const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
+  const [isViewOrderOpen, setIsViewOrderOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [orders] = useState([
     {
       id: "CMD-001",
@@ -70,10 +75,22 @@ export default function Orders() {
     return <Badge variant="outline" className={styles[priority] || ""}>{priority}</Badge>;
   };
 
-  const filteredOrders = orders.filter(order =>
-    order.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = order.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         order.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleEditOrder = (order: any) => {
+    setSelectedOrder(order);
+    setIsEditOrderOpen(true);
+  };
+
+  const handleViewOrder = (order: any) => {
+    setSelectedOrder(order);
+    setIsViewOrderOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -83,7 +100,7 @@ export default function Orders() {
           <p className="text-muted-foreground">Gérez toutes vos commandes et leur statut</p>
         </div>
         
-        <Dialog>
+        <Dialog open={isNewOrderOpen} onOpenChange={setIsNewOrderOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -129,8 +146,8 @@ export default function Orders() {
                 </div>
               </div>
               <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline">Annuler</Button>
-                <Button>Créer la Commande</Button>
+                <Button variant="outline" onClick={() => setIsNewOrderOpen(false)}>Annuler</Button>
+                <Button onClick={() => setIsNewOrderOpen(false)}>Créer la Commande</Button>
               </div>
             </div>
           </DialogContent>
@@ -184,10 +201,10 @@ export default function Orders() {
                   <TableCell className="font-medium">{order.amount}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end space-x-1">
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" onClick={() => handleViewOrder(order)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" onClick={() => handleEditOrder(order)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-800">
@@ -201,6 +218,118 @@ export default function Orders() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Dialog for editing order */}
+      <Dialog open={isEditOrderOpen} onOpenChange={setIsEditOrderOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Modifier la commande {selectedOrder?.id}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-client">Client</Label>
+              <Input id="edit-client" defaultValue={selectedOrder?.client} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-status">Statut</Label>
+              <Select defaultValue={selectedOrder?.status}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="En préparation">En préparation</SelectItem>
+                  <SelectItem value="Validé">Validé</SelectItem>
+                  <SelectItem value="En cours">En cours</SelectItem>
+                  <SelectItem value="Livré">Livré</SelectItem>
+                  <SelectItem value="En retard">En retard</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-priority">Priorité</Label>
+              <Select defaultValue={selectedOrder?.priority}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Normale">Normale</SelectItem>
+                  <SelectItem value="Haute">Haute</SelectItem>
+                  <SelectItem value="Critique">Critique</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-amount">Montant</Label>
+              <Input id="edit-amount" defaultValue={selectedOrder?.amount} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-items">Nombre d'articles</Label>
+              <Input id="edit-items" type="number" defaultValue={selectedOrder?.items} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsEditOrderOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={() => setIsEditOrderOpen(false)}>
+              Modifier la commande
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for viewing order details */}
+      <Dialog open={isViewOrderOpen} onOpenChange={setIsViewOrderOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Détails de la commande {selectedOrder?.id}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Client</Label>
+                <p className="text-sm text-muted-foreground">{selectedOrder?.client}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Date</Label>
+                <p className="text-sm text-muted-foreground">{selectedOrder?.date}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Statut</Label>
+                <div className="mt-1">{selectedOrder && getStatusBadge(selectedOrder.status)}</div>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Priorité</Label>
+                <div className="mt-1">{selectedOrder && getPriorityBadge(selectedOrder.priority)}</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Montant</Label>
+                <p className="text-sm text-muted-foreground font-medium">{selectedOrder?.amount}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Articles</Label>
+                <p className="text-sm text-muted-foreground">{selectedOrder?.items} articles</p>
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Description</Label>
+              <p className="text-sm text-muted-foreground mt-1">
+                Commande de matériel pour {selectedOrder?.client}. Comprend {selectedOrder?.items} articles 
+                pour un montant total de {selectedOrder?.amount}.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setIsViewOrderOpen(false)}>
+              Fermer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
