@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Edit, Eye, Ship, Plane, Truck } from "lucide-react";
+import { Plus, Search, Edit, Eye, Ship, Plane, Truck, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 
 interface Shipment {
   id: string;
@@ -75,6 +76,8 @@ function Shipments() {
   const [editingShipment, setEditingShipment] = useState<Shipment | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingShipment, setViewingShipment] = useState<Shipment | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [shipmentToDelete, setShipmentToDelete] = useState<Shipment | null>(null);
 
   const form = useForm({
     defaultValues: {
@@ -142,6 +145,20 @@ function Shipments() {
     
     setDialogOpen(false);
     form.reset();
+  };
+
+  const handleDeleteShipment = (shipment: Shipment) => {
+    setShipmentToDelete(shipment);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteShipment = () => {
+    if (!shipmentToDelete) return;
+
+    setShipments(prev => prev.filter(s => s.id !== shipmentToDelete.id));
+    toast.success("Expédition supprimée avec succès");
+    setDeleteDialogOpen(false);
+    setShipmentToDelete(null);
   };
 
   const getTransportIcon = (type: string) => {
@@ -462,6 +479,13 @@ function Shipments() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteShipment(shipment)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -520,6 +544,17 @@ function Shipments() {
             )}
           </DialogContent>
         </Dialog>
+
+        <ConfirmationDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={confirmDeleteShipment}
+          title="ATTENTION CETTE ACTION EST IRRÉVERSIBLE"
+          description="Êtes-vous sûr de vouloir supprimer l'expédition"
+          itemName={shipmentToDelete?.id}
+          confirmText="Oui, supprimer définitivement"
+          cancelText="Annuler"
+        />
       </div>
     </Layout>
   );

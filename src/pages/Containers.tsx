@@ -14,8 +14,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Plus, Search, Container, Package, MapPin, Calendar, Eye, Edit, Ship, 
   Weight, Ruler, AlertTriangle, Truck, Package2, Clock, CheckCircle,
-  XCircle, PlusCircle, MinusCircle
+  XCircle, PlusCircle, MinusCircle, Trash2
 } from "lucide-react";
+import { ConfirmationDialog } from "@/components/ConfirmationDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Product {
   id: string;
@@ -52,6 +55,8 @@ export default function Containers() {
   const [isViewContainerOpen, setIsViewContainerOpen] = useState(false);
   const [isLoadingPlanOpen, setIsLoadingPlanOpen] = useState(false);
   const [selectedContainer, setSelectedContainer] = useState<ContainerData | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [containerToDelete, setContainerToDelete] = useState<ContainerData | null>(null);
   
   const [containers] = useState<ContainerData[]>([
     {
@@ -178,6 +183,33 @@ export default function Containers() {
     return availableProducts.filter(product => 
       product.status === 'received' && product.location !== transitaire
     );
+  };
+
+  const handleDeleteContainer = (container: ContainerData) => {
+    setContainerToDelete(container);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteContainer = async () => {
+    if (!containerToDelete) return;
+
+    try {
+      const { error } = await supabase.rpc('move_to_trash', {
+        p_table_name: 'containers',
+        p_item_id: containerToDelete.id,
+        p_reason: 'Suppression via interface utilisateur'
+      });
+
+      if (error) throw error;
+
+      toast.success("Conteneur déplacé vers la corbeille");
+    } catch (error) {
+      console.error('Error deleting container:', error);
+      toast.error("Erreur lors de la suppression");
+    } finally {
+      setDeleteDialogOpen(false);
+      setContainerToDelete(null);
+    }
   };
 
   return (
@@ -413,6 +445,9 @@ export default function Containers() {
                         <Button variant="outline" size="sm" onClick={() => handleEditContainer(container)}>
                           <Edit className="h-3 w-3" />
                         </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDeleteContainer(container)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -635,6 +670,17 @@ export default function Containers() {
             )}
           </DialogContent>
         </Dialog>
+
+        <ConfirmationDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={confirmDeleteContainer}
+          title="ATTENTION CETTE ACTION EST IRRÉVERSIBLE"
+          description="Êtes-vous sûr de vouloir supprimer le conteneur"
+          itemName={containerToDelete?.id}
+          confirmText="Oui, supprimer définitivement"
+          cancelText="Annuler"
+        />
       </div>
     </Layout>
   );

@@ -10,10 +10,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Search, Filter, Eye, Edit, Package, Calculator, AlertTriangle, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Package, Calculator, AlertTriangle, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 
 interface Groupage {
   id: string;
@@ -93,6 +94,8 @@ function Groupage() {
   const [selectedGroupage, setSelectedGroupage] = useState<Groupage | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [containers, setContainers] = useState<any[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [groupageToDelete, setGroupageToDelete] = useState<Groupage | null>(null);
 
   const bookingForm = useForm({
     defaultValues: {
@@ -340,6 +343,34 @@ function Groupage() {
     return total > 0 ? (used / total) * 100 : 0;
   };
 
+  const handleDeleteGroupage = (groupage: Groupage) => {
+    setGroupageToDelete(groupage);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteGroupage = async () => {
+    if (!groupageToDelete) return;
+
+    try {
+      const { error } = await supabase.rpc('move_to_trash', {
+        p_table_name: 'groupages',
+        p_item_id: groupageToDelete.id,
+        p_reason: 'Suppression via interface utilisateur'
+      });
+
+      if (error) throw error;
+
+      setGroupages(prev => prev.filter(g => g.id !== groupageToDelete.id));
+      toast.success("Groupage déplacé vers la corbeille");
+    } catch (error) {
+      console.error('Error deleting groupage:', error);
+      toast.error("Erreur lors de la suppression");
+    } finally {
+      setDeleteDialogOpen(false);
+      setGroupageToDelete(null);
+    }
+  };
+
   const filteredGroupages = groupages.filter(groupage => {
     const matchesSearch = groupage.container?.number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          groupage.transitaire.toLowerCase().includes(searchTerm.toLowerCase());
@@ -545,17 +576,24 @@ function Groupage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedGroupage(groupage);
-                              setIsBookOrderOpen(true);
-                            }}
-                            disabled={groupage.status !== 'available'}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => {
+                               setSelectedGroupage(groupage);
+                               setIsBookOrderOpen(true);
+                             }}
+                             disabled={groupage.status !== 'available'}
+                           >
+                             <Plus className="h-4 w-4" />
+                           </Button>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => handleDeleteGroupage(groupage)}
+                           >
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1072,6 +1110,17 @@ function Groupage() {
             </Form>
           </DialogContent>
         </Dialog>
+
+        <ConfirmationDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={confirmDeleteGroupage}
+          title="ATTENTION CETTE ACTION EST IRRÉVERSIBLE"
+          description="Êtes-vous sûr de vouloir supprimer le groupage"
+          itemName={groupageToDelete?.container?.number}
+          confirmText="Oui, supprimer définitivement"
+          cancelText="Annuler"
+        />
       </div>
     </Layout>
   );

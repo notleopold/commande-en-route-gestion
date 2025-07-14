@@ -11,10 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Edit, Archive, FileText, AlertTriangle, Package } from "lucide-react";
+import { Plus, Search, Edit, Archive, FileText, AlertTriangle, Package, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 
 interface Product {
   id: string;
@@ -66,6 +67,8 @@ export default function Products() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   const form = useForm({
     defaultValues: {
@@ -211,6 +214,34 @@ export default function Products() {
     } catch (error) {
       console.error('Error updating product:', error);
       toast.error("Erreur lors de la mise à jour");
+    }
+  };
+
+  const handleDeleteProduct = (product: Product) => {
+    setProductToDelete(product);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
+
+    try {
+      const { error } = await supabase.rpc('move_to_trash', {
+        p_table_name: 'products',
+        p_item_id: productToDelete.id,
+        p_reason: 'Suppression via interface utilisateur'
+      });
+
+      if (error) throw error;
+
+      setProducts(prev => prev.filter(p => p.id !== productToDelete.id));
+      toast.success("Produit déplacé vers la corbeille");
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      toast.error("Erreur lors de la suppression");
+    } finally {
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
     }
   };
 
@@ -1021,6 +1052,13 @@ export default function Products() {
                         >
                           <Archive className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteProduct(product)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                         <Button variant="outline" size="sm">
                           <FileText className="h-4 w-4" />
                         </Button>
@@ -1032,6 +1070,17 @@ export default function Products() {
             </Table>
           </CardContent>
         </Card>
+
+        <ConfirmationDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={confirmDeleteProduct}
+          title="ATTENTION CETTE ACTION EST IRRÉVERSIBLE"
+          description="Êtes-vous sûr de vouloir supprimer le produit"
+          itemName={productToDelete?.name}
+          confirmText="Oui, supprimer définitivement"
+          cancelText="Annuler"
+        />
       </div>
     </Layout>
   );
