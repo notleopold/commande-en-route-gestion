@@ -134,6 +134,7 @@ export default function Orders() {
   };
 
   const canLinkToContainer = (order: any, container: any) => {
+    if (!order || !container) return false;
     return order.currentTransitaire === container.transitaire;
   };
 
@@ -291,8 +292,8 @@ export default function Orders() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="edit-client">Client</Label>
-              <Input id="edit-client" defaultValue={selectedOrder?.client} />
+              <Label htmlFor="edit-supplier">Fournisseur</Label>
+              <Input id="edit-supplier" defaultValue={selectedOrder?.supplier} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="edit-status">Statut</Label>
@@ -301,34 +302,40 @@ export default function Orders() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="En préparation">En préparation</SelectItem>
-                  <SelectItem value="Validé">Validé</SelectItem>
-                  <SelectItem value="En cours">En cours</SelectItem>
-                  <SelectItem value="Livré">Livré</SelectItem>
-                  <SelectItem value="En retard">En retard</SelectItem>
+                  <SelectItem value="BDC ENVOYÉ ZIKETRO">BDC ENVOYÉ ZIKETRO</SelectItem>
+                  <SelectItem value="À COMMANDER">À COMMANDER</SelectItem>
+                  <SelectItem value="PAIEMENT EN ATTENTE">PAIEMENT EN ATTENTE</SelectItem>
+                  <SelectItem value="COMMANDÉ → EN LIVRAISON">COMMANDÉ → EN LIVRAISON</SelectItem>
+                  <SelectItem value="PAYÉ">PAYÉ</SelectItem>
+                  <SelectItem value="REÇU TRANSITAIRE SIFA">REÇU TRANSITAIRE SIFA</SelectItem>
+                  <SelectItem value="REÇU TRANSITAIRE TAF">REÇU TRANSITAIRE TAF</SelectItem>
+                  <SelectItem value="REÇU TRANSITAIRE CEVA">REÇU TRANSITAIRE CEVA</SelectItem>
+                  <SelectItem value="EMBARQUÉ">EMBARQUÉ</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-priority">Priorité</Label>
-              <Select defaultValue={selectedOrder?.priority}>
+              <Label htmlFor="edit-transitaire">Transitaire</Label>
+              <Select defaultValue={selectedOrder?.currentTransitaire}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Normale">Normale</SelectItem>
-                  <SelectItem value="Haute">Haute</SelectItem>
-                  <SelectItem value="Critique">Critique</SelectItem>
+                  <SelectItem value="SIFA">SIFA</SelectItem>
+                  <SelectItem value="TAF">TAF</SelectItem>
+                  <SelectItem value="CEVA">CEVA</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-amount">Montant</Label>
-              <Input id="edit-amount" defaultValue={selectedOrder?.amount} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-items">Nombre d'articles</Label>
-              <Input id="edit-items" type="number" defaultValue={selectedOrder?.items} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-cartons">Cartons</Label>
+                <Input id="edit-cartons" type="number" defaultValue={selectedOrder?.cartons} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-unit-price">Prix unitaire (€)</Label>
+                <Input id="edit-unit-price" type="number" step="0.01" defaultValue={selectedOrder?.unitPrice} />
+              </div>
             </div>
           </div>
           <div className="flex justify-end gap-2">
