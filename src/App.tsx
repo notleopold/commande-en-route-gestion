@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Orders from "./pages/Orders";
 import Products from "./pages/Products";
+import Suppliers from "./pages/Suppliers";
 import Shipments from "./pages/Shipments";
 import Containers from "./pages/Containers";
 import Groupage from "./pages/Groupage";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/products" element={<Products />} />
+          <Route path="/suppliers" element={<Suppliers />} />
           <Route path="/shipments" element={<Shipments />} />
           <Route path="/containers" element={<Containers />} />
           <Route path="/groupage" element={<Groupage />} />

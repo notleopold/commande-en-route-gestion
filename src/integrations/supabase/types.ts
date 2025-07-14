@@ -605,6 +605,114 @@ export type Database = {
           },
         ]
       }
+      suppliers: {
+        Row: {
+          address: string | null
+          associated_clients: string[] | null
+          attachments: string[] | null
+          country: string | null
+          created_at: string
+          currency: string | null
+          delivery_rate: number | null
+          email: string | null
+          exclusive_to_client: boolean | null
+          id: string
+          incidents_count: number | null
+          incoterm: string | null
+          last_order_date: string | null
+          main_contact_name: string | null
+          minimum_order_amount: number | null
+          minimum_order_quantity: number | null
+          name: string
+          notes: string | null
+          packaging_specs: string | null
+          payment_conditions: string | null
+          payment_method: string | null
+          phone: string | null
+          position: string | null
+          preferred_communication: string | null
+          preparation_time: number | null
+          product_types: string[] | null
+          reliability_rating: number | null
+          shipping_origin: string | null
+          ships_themselves: boolean | null
+          status: string
+          total_orders: number | null
+          transport_partners: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          associated_clients?: string[] | null
+          attachments?: string[] | null
+          country?: string | null
+          created_at?: string
+          currency?: string | null
+          delivery_rate?: number | null
+          email?: string | null
+          exclusive_to_client?: boolean | null
+          id?: string
+          incidents_count?: number | null
+          incoterm?: string | null
+          last_order_date?: string | null
+          main_contact_name?: string | null
+          minimum_order_amount?: number | null
+          minimum_order_quantity?: number | null
+          name: string
+          notes?: string | null
+          packaging_specs?: string | null
+          payment_conditions?: string | null
+          payment_method?: string | null
+          phone?: string | null
+          position?: string | null
+          preferred_communication?: string | null
+          preparation_time?: number | null
+          product_types?: string[] | null
+          reliability_rating?: number | null
+          shipping_origin?: string | null
+          ships_themselves?: boolean | null
+          status?: string
+          total_orders?: number | null
+          transport_partners?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          associated_clients?: string[] | null
+          attachments?: string[] | null
+          country?: string | null
+          created_at?: string
+          currency?: string | null
+          delivery_rate?: number | null
+          email?: string | null
+          exclusive_to_client?: boolean | null
+          id?: string
+          incidents_count?: number | null
+          incoterm?: string | null
+          last_order_date?: string | null
+          main_contact_name?: string | null
+          minimum_order_amount?: number | null
+          minimum_order_quantity?: number | null
+          name?: string
+          notes?: string | null
+          packaging_specs?: string | null
+          payment_conditions?: string | null
+          payment_method?: string | null
+          phone?: string | null
+          position?: string | null
+          preferred_communication?: string | null
+          preparation_time?: number | null
+          product_types?: string[] | null
+          reliability_rating?: number | null
+          shipping_origin?: string | null
+          ships_themselves?: boolean | null
+          status?: string
+          total_orders?: number | null
+          transport_partners?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
