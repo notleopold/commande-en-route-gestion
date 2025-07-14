@@ -40,7 +40,7 @@ const App = () => (
           <Route path="/containers" element={<Containers />} />
           <Route path="/groupage" element={<Groupage />} />
           <Route path="/reports" element={<Reports />} />
-          <Route path="/users" element={<Users />} />
+          <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/trash" element={<TrashManagement />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

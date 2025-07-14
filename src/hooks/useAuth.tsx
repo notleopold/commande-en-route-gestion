@@ -14,6 +14,13 @@ export function useAuth() {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Update last login when user signs in
+        if (event === 'SIGNED_IN' && session?.user) {
+          setTimeout(() => {
+            updateLastLogin(session.user.id);
+          }, 0);
+        }
       }
     );
 
@@ -26,6 +33,17 @@ export function useAuth() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const updateLastLogin = async (userId: string) => {
+    try {
+      await supabase
+        .from('profiles')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('id', userId);
+    } catch (error) {
+      console.error('Error updating last login:', error);
+    }
+  };
 
   const signOut = async () => {
     await supabase.auth.signOut();

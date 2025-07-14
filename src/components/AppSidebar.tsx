@@ -23,11 +23,11 @@ const menuItems = [
   { title: "Conteneurs", url: "/containers", icon: Container },
   { title: "Groupage", url: "/groupage", icon: Boxes },
   { title: "Rapports", url: "/reports", icon: FileText },
-  { title: "Utilisateurs", url: "/users", icon: Users },
   { title: "Paramètres", url: "/settings", icon: Settings },
 ];
 
 const adminMenuItems = [
+  { title: "Utilisateurs", url: "/users", icon: Users },
   { title: "Corbeille", url: "/trash", icon: Trash2 },
 ];
 
