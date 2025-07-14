@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { Building2, Plus, Search, Filter, Edit, Archive, Eye, Star } from "lucide-react";
@@ -425,20 +426,37 @@ const Suppliers = () => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Clients associés *</FormLabel>
-                            <FormControl>
-                              <Select>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Sélectionner les clients" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {clients.map(client => (
-                                    <SelectItem key={client.id} value={client.id}>
+                            <div className="grid grid-cols-2 gap-3 border rounded-lg p-4 max-h-40 overflow-y-auto">
+                              {clients.map(client => {
+                                const isChecked = field.value?.includes(client.id) || false;
+                                
+                                return (
+                                  <div key={client.id} className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id={client.id}
+                                      checked={isChecked}
+                                      onCheckedChange={(checked) => {
+                                        const currentValues = field.value || [];
+                                        if (checked) {
+                                          field.onChange([...currentValues, client.id]);
+                                        } else {
+                                          field.onChange(currentValues.filter((id: string) => id !== client.id));
+                                        }
+                                      }}
+                                    />
+                                    <label 
+                                      htmlFor={client.id}
+                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                    >
                                       {client.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
+                                    </label>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {clients.length === 0 && (
+                              <p className="text-sm text-muted-foreground">Aucun client disponible. Ajoutez d'abord des clients.</p>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}
@@ -861,9 +879,19 @@ const Suppliers = () => {
               </div>
 
               {supplier.exclusive_to_client && (
-                <Badge variant="outline" className="text-xs">
-                  Exclusif client
-                </Badge>
+                <div>
+                  <Badge variant="outline" className="text-xs mb-2">
+                    Exclusif client
+                  </Badge>
+                  {supplier.associated_clients && supplier.associated_clients.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      Clients: {supplier.associated_clients.map(clientId => {
+                        const client = clients.find(c => c.id === clientId);
+                        return client?.name;
+                      }).filter(Boolean).join(", ")}
+                    </div>
+                  )}
+                </div>
               )}
 
               <div className="flex items-center gap-1">
