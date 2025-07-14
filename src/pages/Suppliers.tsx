@@ -13,6 +13,7 @@ import { useForm } from "react-hook-form";
 import { Building2, Plus, Search, Filter, Edit, Archive, Eye, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Layout } from "@/components/Layout";
 
 interface Supplier {
   id: string;
@@ -283,8 +284,9 @@ const Suppliers = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <Layout title="Fournisseurs">
+      <div>
+        <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Fournisseurs</h1>
           <p className="text-muted-foreground mt-2">
@@ -929,7 +931,8 @@ const Suppliers = () => {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </Layout>
   );
 };
 
