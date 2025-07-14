@@ -12,7 +12,7 @@ import { Trash2, RotateCcw, Search, Filter, AlertTriangle, Clock, Package } from
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNow } from "date-fns";
-import { fr } from "date-fns/locale";
+import { fr } from "date-fns/locale/fr";
 import { useUserRole } from "@/hooks/useUserRole";
 
 interface DeletedItem {
