@@ -178,9 +178,9 @@ const SupplierDetail = () => {
           </div>
           <div className="flex items-center gap-2">
             {getStatusBadge(supplier.status)}
-            <Button onClick={() => navigate(`/suppliers/edit/${supplier.id}`)}>
+            <Button onClick={() => navigate('/suppliers')}>
               <Edit className="h-4 w-4 mr-2" />
-              Modifier
+              Modifier (Retour à la liste)
             </Button>
           </div>
         </div>

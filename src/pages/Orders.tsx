@@ -92,6 +92,20 @@ interface Order {
   order_products?: OrderProduct[];
 }
 
+interface Supplier {
+  id: string;
+  name: string;
+  status: string;
+}
+
+interface Payment {
+  id: string;
+  amount: number;
+  payment_date: string;
+  payment_method: string;
+  status: string;
+}
+
 const ORDER_STATUSES = [
   "BDC ENVOYÉ ZIKETRO",
   "À COMMANDER", 
@@ -114,15 +128,16 @@ const PAYMENT_TYPES = [
 
 const TRANSITAIRES = ["SIFA", "TAF", "CEVA"];
 
-export default function Orders() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [containers, setContainers] = useState<Container[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
+  const [statusFilter, setStatusFilter] = useState("all");
   // Dialog states
   const [isNewOrderOpen, setIsNewOrderOpen] = useState(false);
   const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
@@ -153,10 +168,14 @@ export default function Orders() {
   });
 
   useEffect(() => {
-    fetchData();
+    fetchOrders();
+    fetchProducts();
+    fetchClients();
+    fetchSuppliers();
+    fetchContainers();
   }, []);
 
-  const fetchData = async () => {
+  const fetchOrders = async () => {
     try {
       const [ordersRes, productsRes, clientsRes, containersRes] = await Promise.all([
         supabase.from('orders').select(`
@@ -184,6 +203,63 @@ export default function Orders() {
       toast.error("Erreur lors du chargement des données");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('status', 'active');
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
+
+  const fetchClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name, email, phone')
+        .order('name');
+
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+    }
+  };
+
+  const fetchSuppliers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('id, name, status')
+        .eq('status', 'active')
+        .order('name');
+
+      if (error) throw error;
+      setSuppliers(data || []);
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+    }
+  };
+
+  const fetchContainers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('containers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setContainers(data || []);
+    } catch (error) {
+      console.error('Error fetching containers:', error);
     }
   };
 
@@ -364,7 +440,7 @@ export default function Orders() {
       setIsEditOrderOpen(false);
       setSelectedProducts({});
       orderForm.reset();
-      fetchData();
+      fetchOrders();
     } catch (error) {
       console.error('Error saving order:', error);
       toast.error("Erreur lors de l'enregistrement");
@@ -552,9 +628,18 @@ export default function Orders() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Fournisseur</FormLabel>
-                              <FormControl>
-                                <Input {...field} placeholder="Nom du fournisseur" />
-                              </FormControl>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner un fournisseur" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {suppliers.map(supplier => (
+                                    <SelectItem key={supplier.id} value={supplier.name}>{supplier.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -1055,9 +1140,18 @@ export default function Orders() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Fournisseur</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Nom du fournisseur" />
-                            </FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Sélectionner un fournisseur" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {suppliers.map(supplier => (
+                                  <SelectItem key={supplier.id} value={supplier.name}>{supplier.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -1216,7 +1310,7 @@ export default function Orders() {
                           if (error) throw error;
                           toast.success("Commande déliée du conteneur");
                           setIsContainerLinkOpen(false);
-                          fetchData();
+                          fetchOrders();
                         } catch (error) {
                           toast.error("Erreur lors de la suppression du lien");
                         }
@@ -1280,7 +1374,7 @@ export default function Orders() {
                                       if (error) throw error;
                                       toast.success("Commande liée au conteneur");
                                       setIsContainerLinkOpen(false);
-                                      fetchData();
+                                      fetchOrders();
                                     } catch (error) {
                                       toast.error("Erreur lors de la liaison");
                                     }
@@ -1309,4 +1403,6 @@ export default function Orders() {
       </div>
     </Layout>
   );
-}
+};
+
+export default Orders;
