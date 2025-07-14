@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -95,7 +96,8 @@ export default function Containers() {
   };
 
   return (
-    <div className="space-y-6">
+    <Layout title="Gestion des Conteneurs">
+      <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Gestion des Conteneurs</h2>
@@ -298,6 +300,7 @@ export default function Containers() {
           </Table>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </Layout>
   );
 }
