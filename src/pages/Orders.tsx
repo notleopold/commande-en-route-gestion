@@ -101,9 +101,45 @@ export default function Orders() {
   };
 
   const containers = [
-    { id: "CONT-001", name: "Container SIFA 20ft", transitaire: "SIFA" },
-    { id: "CONT-002", name: "Container CEVA 40ft", transitaire: "CEVA" },
-    { id: "CONT-003", name: "Container TAF 20ft", transitaire: "TAF" }
+    { 
+      id: "CONT-001", 
+      number: "SIFA2024001",
+      name: "Container SIFA 20ft", 
+      transitaire: "SIFA",
+      type: "20ft",
+      etd: "2024-02-15",
+      eta: "2024-03-10",
+      currentPallets: 8,
+      maxPallets: 12,
+      hasDangerousGoods: false,
+      status: "En cours de chargement"
+    },
+    { 
+      id: "CONT-002", 
+      number: "CEVA2024002",
+      name: "Container CEVA 40ft", 
+      transitaire: "CEVA",
+      type: "40ft", 
+      etd: "2024-02-20",
+      eta: "2024-03-15",
+      currentPallets: 18,
+      maxPallets: 24,
+      hasDangerousGoods: true,
+      status: "Prêt pour embarquement"
+    },
+    { 
+      id: "CONT-003", 
+      number: "TAF2024003",
+      name: "Container TAF 20ft", 
+      transitaire: "TAF",
+      type: "20ft",
+      etd: "2024-02-25",
+      eta: "2024-03-20",
+      currentPallets: 5,
+      maxPallets: 12,
+      hasDangerousGoods: false,
+      status: "Disponible"
+    }
   ];
 
   const filteredOrders = orders.filter(order => {
@@ -504,23 +540,78 @@ export default function Orders() {
                 </p>
                 <div className="space-y-2">
                   <Label>Containers disponibles</Label>
-                  <div className="space-y-2">
-                    {containers.map((container) => (
-                      <div key={container.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <p className="font-medium">{container.name}</p>
-                          <p className="text-sm text-muted-foreground">Transitaire: {container.transitaire}</p>
-                        </div>
-                        <Button 
-                          size="sm" 
-                          disabled={!canLinkToContainer(selectedOrder, container)}
-                          className={!canLinkToContainer(selectedOrder, container) ? "opacity-50" : ""}
-                        >
-                          {canLinkToContainer(selectedOrder, container) ? "Lier" : "Incompatible"}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                   <div className="space-y-3">
+                     {containers.map((container) => (
+                       <div key={container.id} className="border rounded-lg overflow-hidden">
+                         <div className="p-4 space-y-3">
+                           <div className="flex items-start justify-between">
+                             <div className="space-y-1">
+                               <div className="flex items-center gap-2">
+                                 <h4 className="font-medium">{container.number}</h4>
+                                 <Badge variant="outline" className="text-xs">
+                                   {container.type}
+                                 </Badge>
+                                 {container.hasDangerousGoods && (
+                                   <Badge variant="destructive" className="text-xs">
+                                     ⚠️ Dangereux
+                                   </Badge>
+                                 )}
+                               </div>
+                               <p className="text-sm text-muted-foreground">Transitaire: {container.transitaire}</p>
+                             </div>
+                             <Button 
+                               size="sm" 
+                               disabled={!canLinkToContainer(selectedOrder, container)}
+                               className={!canLinkToContainer(selectedOrder, container) ? "opacity-50" : ""}
+                             >
+                               {canLinkToContainer(selectedOrder, container) ? "Lier" : "Incompatible"}
+                             </Button>
+                           </div>
+                           
+                           <div className="grid grid-cols-2 gap-4 text-sm">
+                             <div>
+                               <Label className="text-xs font-medium text-muted-foreground">ETD (Départ)</Label>
+                               <p className="font-medium">{container.etd}</p>
+                             </div>
+                             <div>
+                               <Label className="text-xs font-medium text-muted-foreground">ETA (Arrivée)</Label>
+                               <p className="font-medium">{container.eta}</p>
+                             </div>
+                           </div>
+                           
+                           <div className="space-y-2">
+                             <div className="flex items-center justify-between text-sm">
+                               <span className="text-muted-foreground">Palettes:</span>
+                               <span className="font-medium">{container.currentPallets}/{container.maxPallets}</span>
+                             </div>
+                             <div className="w-full bg-gray-200 rounded-full h-2">
+                               <div 
+                                 className={`h-2 rounded-full transition-all ${
+                                   container.currentPallets / container.maxPallets > 0.8 
+                                     ? 'bg-red-500' 
+                                     : container.currentPallets / container.maxPallets > 0.6 
+                                     ? 'bg-orange-500' 
+                                     : 'bg-green-500'
+                                 }`}
+                                 style={{ width: `${(container.currentPallets / container.maxPallets) * 100}%` }}
+                               ></div>
+                             </div>
+                           </div>
+                           
+                           <div className="flex items-center justify-between pt-2 border-t">
+                             <Badge variant="outline" className={
+                               container.status === "Disponible" ? "bg-green-50 text-green-700" :
+                               container.status === "En cours de chargement" ? "bg-blue-50 text-blue-700" :
+                               container.status === "Prêt pour embarquement" ? "bg-purple-50 text-purple-700" :
+                               "bg-gray-50 text-gray-700"
+                             }>
+                               {container.status}
+                             </Badge>
+                           </div>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
                 </div>
                 {containers.filter(c => !canLinkToContainer(selectedOrder, c)).length > 0 && (
                   <div className="p-4 bg-orange-50 rounded-lg">
