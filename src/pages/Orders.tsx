@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, Eye, Edit } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,6 +86,8 @@ const Orders = () => {
   // Dialog states
   const [isNewOrderOpen, setIsNewOrderOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
 
   const orderForm = useForm({
     defaultValues: {
@@ -208,6 +211,32 @@ const Orders = () => {
       console.error('Error saving order:', error);
       toast.error("Erreur lors de l'enregistrement");
     }
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderToDelete.id);
+
+      if (error) throw error;
+
+      toast.success("Commande supprimée avec succès");
+      setIsDeleteDialogOpen(false);
+      setOrderToDelete(null);
+      fetchOrders();
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast.error("Erreur lors de la suppression");
+    }
+  };
+
+  const openDeleteDialog = (order: Order) => {
+    setOrderToDelete(order);
+    setIsDeleteDialogOpen(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -472,6 +501,14 @@ const Orders = () => {
                         <Button size="sm" variant="outline">
                           <Edit className="h-4 w-4" />
                         </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => openDeleteDialog(order)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -491,6 +528,41 @@ const Orders = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent className="bg-background border-destructive border-2">
+            <AlertDialogHeader>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-6 w-6 text-destructive" />
+                <AlertDialogTitle className="text-destructive">
+                  ATTENTION CETTE ACTION EST IRRÉVERSIBLE
+                </AlertDialogTitle>
+              </div>
+              <AlertDialogDescription className="text-lg">
+                Êtes-vous absolument certain de vouloir supprimer la commande{" "}
+                <span className="font-bold text-destructive">
+                  {orderToDelete?.order_number}
+                </span>
+                ?
+                <br />
+                <br />
+                <span className="text-sm text-muted-foreground">
+                  Cette action ne peut pas être annulée. Toutes les données liées à cette commande seront définitivement perdues.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleDeleteOrder}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Oui, supprimer définitivement
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );

@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -12,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useForm } from "react-hook-form";
-import { UserCheck, Plus, Search, Filter, Edit, Eye, CalendarIcon, Euro, Package, TrendingUp, Clock, AlertCircle } from "lucide-react";
+import { UserCheck, Plus, Search, Filter, Edit, Eye, CalendarIcon, Euro, Package, TrendingUp, Clock, AlertCircle, Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
@@ -89,6 +90,8 @@ const Clients = () => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const { toast } = useToast();
 
   const form = useForm({
@@ -336,6 +339,45 @@ const Clients = () => {
     });
   };
 
+  const handleDeleteClient = async () => {
+    if (!clientToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', clientToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Client supprimé avec succès",
+      });
+
+      setIsDeleteDialogOpen(false);
+      setClientToDelete(null);
+      fetchClients();
+      
+      // Si le client supprimé était sélectionné, revenir à la liste
+      if (selectedClient && selectedClient.id === clientToDelete.id) {
+        setSelectedClient(null);
+      }
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le client",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openDeleteDialog = (client: Client) => {
+    setClientToDelete(client);
+    setIsDeleteDialogOpen(true);
+  };
+
   const filteredClients = clients.filter(client => {
     const matchesSearch = client.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          client.main_contact_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -432,6 +474,14 @@ const Clients = () => {
               <Button onClick={() => setIsPaymentDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nouveau paiement
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => openDeleteDialog(selectedClient)}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Supprimer
               </Button>
             </div>
           </div>
@@ -1352,6 +1402,12 @@ const Clients = () => {
                     }}>
                       <Eye className="h-4 w-4" />
                     </Button>
+                    <Button size="sm" variant="outline" onClick={(e) => {
+                      e.stopPropagation();
+                      openDeleteDialog(client);
+                    }} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -1378,6 +1434,41 @@ const Clients = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="bg-background border-destructive border-2">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+              <AlertDialogTitle className="text-destructive">
+                ATTENTION CETTE ACTION EST IRRÉVERSIBLE
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-lg">
+              Êtes-vous absolument certain de vouloir supprimer le client{" "}
+              <span className="font-bold text-destructive">
+                {clientToDelete?.name}
+              </span>
+              ?
+              <br />
+              <br />
+              <span className="text-sm text-muted-foreground">
+                Cette action ne peut pas être annulée. Toutes les données liées à ce client (commandes, paiements, etc.) seront définitivement perdues.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteClient}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Oui, supprimer définitivement
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };

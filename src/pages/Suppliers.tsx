@@ -4,13 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
-import { Building2, Plus, Search, Filter, Edit, Archive, Eye, Star } from "lucide-react";
+import { Building2, Plus, Search, Filter, Edit, Archive, Eye, Star, Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
@@ -65,6 +66,8 @@ const Suppliers = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -249,6 +252,40 @@ const Suppliers = () => {
       reliability_rating: supplier.reliability_rating || 3,
       notes: supplier.notes,
     });
+  };
+
+  const handleDeleteSupplier = async () => {
+    if (!supplierToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('suppliers')
+        .delete()
+        .eq('id', supplierToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Fournisseur supprimé avec succès",
+      });
+
+      setIsDeleteDialogOpen(false);
+      setSupplierToDelete(null);
+      fetchSuppliers();
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le fournisseur",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openDeleteDialog = (supplier: Supplier) => {
+    setSupplierToDelete(supplier);
+    setIsDeleteDialogOpen(true);
   };
 
   const filteredSuppliers = suppliers.filter(supplier => {
@@ -921,16 +958,29 @@ const Suppliers = () => {
                   <Eye className="h-4 w-4 mr-1" />
                   Voir
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEditDialog(supplier);
-                  }}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
+                <div className="flex gap-1">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditDialog(supplier);
+                    }}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDeleteDialog(supplier);
+                    }}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -954,8 +1004,43 @@ const Suppliers = () => {
             </Button>
           )}
         </div>
-      )}
+        )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="bg-background border-destructive border-2">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+              <AlertDialogTitle className="text-destructive">
+                ATTENTION CETTE ACTION EST IRRÉVERSIBLE
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-lg">
+              Êtes-vous absolument certain de vouloir supprimer le fournisseur{" "}
+              <span className="font-bold text-destructive">
+                {supplierToDelete?.name}
+              </span>
+              ?
+              <br />
+              <br />
+              <span className="text-sm text-muted-foreground">
+                Cette action ne peut pas être annulée. Toutes les données liées à ce fournisseur seront définitivement perdues.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteSupplier}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Oui, supprimer définitivement
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 };
