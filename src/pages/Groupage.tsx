@@ -89,8 +89,10 @@ export default function Groupage() {
   // Dialog states
   const [isViewGroupageOpen, setIsViewGroupageOpen] = useState(false);
   const [isBookOrderOpen, setIsBookOrderOpen] = useState(false);
+  const [isCreateGroupageOpen, setIsCreateGroupageOpen] = useState(false);
   const [selectedGroupage, setSelectedGroupage] = useState<Groupage | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [containers, setContainers] = useState<any[]>([]);
 
   const bookingForm = useForm({
     defaultValues: {
@@ -101,13 +103,30 @@ export default function Groupage() {
     },
   });
 
+  const createGroupageForm = useForm({
+    defaultValues: {
+      container_id: "",
+      transitaire: "",
+      max_space_pallets: "",
+      max_weight: "",
+      max_volume: "",
+      allows_dangerous_goods: false,
+      cost_per_palette: "",
+      cost_per_kg: "",
+      cost_per_m3: "",
+      departure_date: "",
+      arrival_date: "",
+      notes: "",
+    },
+  });
+
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
-      const [groupagesRes, ordersRes] = await Promise.all([
+      const [groupagesRes, ordersRes, containersRes] = await Promise.all([
         supabase.from('groupages').select(`
           *,
           container:containers(*),
@@ -117,14 +136,17 @@ export default function Groupage() {
           *,
           client:clients(*),
           order_products(*, product:products(*))
-        `).is('container_id', null).order('created_at', { ascending: false })
+        `).is('container_id', null).order('created_at', { ascending: false }),
+        supabase.from('containers').select('*').order('created_at', { ascending: false })
       ]);
 
       if (groupagesRes.error) throw groupagesRes.error;
       if (ordersRes.error) throw ordersRes.error;
+      if (containersRes.error) throw containersRes.error;
 
       setGroupages(groupagesRes.data || []);
       setOrders(ordersRes.data || []);
+      setContainers(containersRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error("Erreur lors du chargement des données");
@@ -255,6 +277,47 @@ export default function Groupage() {
     }
   };
 
+  const handleCreateGroupage = async (data: any) => {
+    try {
+      const maxPallets = parseInt(data.max_space_pallets);
+      const maxWeight = parseFloat(data.max_weight);
+      const maxVolume = parseFloat(data.max_volume);
+
+      const groupageData = {
+        container_id: data.container_id,
+        transitaire: data.transitaire,
+        max_space_pallets: maxPallets,
+        available_space_pallets: maxPallets,
+        max_weight: maxWeight,
+        available_weight: maxWeight,
+        max_volume: maxVolume,
+        available_volume: maxVolume,
+        allows_dangerous_goods: data.allows_dangerous_goods,
+        cost_per_palette: parseFloat(data.cost_per_palette),
+        cost_per_kg: data.cost_per_kg ? parseFloat(data.cost_per_kg) : null,
+        cost_per_m3: data.cost_per_m3 ? parseFloat(data.cost_per_m3) : null,
+        departure_date: data.departure_date || null,
+        arrival_date: data.arrival_date || null,
+        notes: data.notes || null,
+        status: 'available'
+      };
+
+      const { error } = await supabase
+        .from('groupages')
+        .insert([groupageData]);
+
+      if (error) throw error;
+
+      toast.success("Groupage créé avec succès");
+      setIsCreateGroupageOpen(false);
+      createGroupageForm.reset();
+      fetchData();
+    } catch (error) {
+      console.error('Error creating groupage:', error);
+      toast.error("Erreur lors de la création du groupage");
+    }
+  };
+
   const getUsagePercentage = (used: number, total: number) => {
     return total > 0 ? (used / total) * 100 : 0;
   };
@@ -368,6 +431,11 @@ export default function Groupage() {
               </SelectContent>
             </Select>
           </div>
+
+          <Button onClick={() => setIsCreateGroupageOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Ajouter un groupage
+          </Button>
         </div>
 
         {/* Table des groupages */}
@@ -767,6 +835,234 @@ export default function Groupage() {
                 </Form>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog pour créer un nouveau groupage */}
+        <Dialog open={isCreateGroupageOpen} onOpenChange={setIsCreateGroupageOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Ajouter un nouveau groupage</DialogTitle>
+            </DialogHeader>
+            <Form {...createGroupageForm}>
+              <form onSubmit={createGroupageForm.handleSubmit(handleCreateGroupage)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={createGroupageForm.control}
+                    name="container_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Conteneur</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Sélectionner un conteneur" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {containers.map(container => (
+                              <SelectItem key={container.id} value={container.id}>
+                                {container.number} - {container.type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createGroupageForm.control}
+                    name="transitaire"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Transitaire</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Sélectionner un transitaire" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {TRANSITAIRES.map(transitaire => (
+                              <SelectItem key={transitaire} value={transitaire}>
+                                {transitaire}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={createGroupageForm.control}
+                    name="max_space_pallets"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Palettes maximum</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" min="1" placeholder="ex: 33" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createGroupageForm.control}
+                    name="max_weight"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Poids max (kg)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.1" placeholder="ex: 28000" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createGroupageForm.control}
+                    name="max_volume"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Volume max (m³)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.1" placeholder="ex: 76" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={createGroupageForm.control}
+                    name="cost_per_palette"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Prix par palette (€)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.01" placeholder="ex: 150.00" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createGroupageForm.control}
+                    name="cost_per_kg"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Prix par kg (€) - optionnel</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.01" placeholder="ex: 0.15" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createGroupageForm.control}
+                    name="cost_per_m3"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Prix par m³ (€) - optionnel</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.01" placeholder="ex: 25.00" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={createGroupageForm.control}
+                    name="departure_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date de départ</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="date" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={createGroupageForm.control}
+                    name="arrival_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date d'arrivée</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="date" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={createGroupageForm.control}
+                  name="allows_dangerous_goods"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                      <div className="space-y-0.5">
+                        <FormLabel>Accepter les produits dangereux</FormLabel>
+                        <div className="text-sm text-muted-foreground">
+                          Le transitaire accepte-t-il les marchandises dangereuses ?
+                        </div>
+                      </div>
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="h-4 w-4"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={createGroupageForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Notes additionnelles..." />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsCreateGroupageOpen(false)}>
+                    Annuler
+                  </Button>
+                  <Button type="submit">
+                    Créer le groupage
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
