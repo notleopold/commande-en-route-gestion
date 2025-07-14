@@ -258,23 +258,25 @@ const Suppliers = () => {
     if (!supplierToDelete) return;
 
     try {
-      const { error } = await supabase
-        .from('suppliers')
-        .delete()
-        .eq('id', supplierToDelete.id);
+      // Move to trash instead of permanent delete
+      const { error } = await supabase.rpc('move_to_trash', {
+        p_table_name: 'suppliers',
+        p_item_id: supplierToDelete.id,
+        p_reason: 'Suppression utilisateur'
+      });
 
       if (error) throw error;
 
       toast({
         title: "Succès",
-        description: "Fournisseur supprimé avec succès",
+        description: "Fournisseur déplacé vers la corbeille",
       });
 
       setIsDeleteDialogOpen(false);
       setSupplierToDelete(null);
       fetchSuppliers();
     } catch (error) {
-      console.error('Error deleting supplier:', error);
+      console.error('Error moving supplier to trash:', error);
       toast({
         title: "Erreur",
         description: "Impossible de supprimer le fournisseur",
@@ -1017,27 +1019,27 @@ const Suppliers = () => {
                 ATTENTION CETTE ACTION EST IRRÉVERSIBLE
               </AlertDialogTitle>
             </div>
-            <AlertDialogDescription className="text-lg">
-              Êtes-vous absolument certain de vouloir supprimer le fournisseur{" "}
-              <span className="font-bold text-destructive">
-                {supplierToDelete?.name}
-              </span>
-              ?
-              <br />
-              <br />
-              <span className="text-sm text-muted-foreground">
-                Cette action ne peut pas être annulée. Toutes les données liées à ce fournisseur seront définitivement perdues.
-              </span>
-            </AlertDialogDescription>
+              <AlertDialogDescription className="text-lg">
+                Êtes-vous certain de vouloir supprimer le fournisseur{" "}
+                <span className="font-bold text-destructive">
+                  {supplierToDelete?.name}
+                </span>
+                ?
+                <br />
+                <br />
+                <span className="text-sm text-muted-foreground">
+                  Le fournisseur sera déplacé vers la corbeille et pourra être restauré pendant 45 jours par un administrateur.
+                </span>
+              </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteSupplier}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Oui, supprimer définitivement
-            </AlertDialogAction>
+              <AlertDialogAction 
+                onClick={handleDeleteSupplier}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Oui, déplacer vers la corbeille
+              </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -187,6 +187,42 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_items: {
+        Row: {
+          created_at: string
+          deleted_at: string
+          deleted_by: string | null
+          id: string
+          item_data: Json
+          item_id: string
+          reason: string | null
+          table_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: string
+          item_data: Json
+          item_id: string
+          reason?: string | null
+          table_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: string
+          item_data?: Json
+          item_id?: string
+          reason?: string | null
+          table_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       groupage_bookings: {
         Row: {
           booking_date: string | null
@@ -832,7 +868,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      move_to_trash: {
+        Args: { p_table_name: string; p_item_id: string; p_reason?: string }
+        Returns: string
+      }
+      restore_from_trash: {
+        Args: { p_trash_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

@@ -217,19 +217,21 @@ const Orders = () => {
     if (!orderToDelete) return;
 
     try {
-      const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', orderToDelete.id);
+      // Move to trash instead of permanent delete
+      const { error } = await supabase.rpc('move_to_trash', {
+        p_table_name: 'orders',
+        p_item_id: orderToDelete.id,
+        p_reason: 'Suppression utilisateur'
+      });
 
       if (error) throw error;
 
-      toast.success("Commande supprimée avec succès");
+      toast.success("Commande déplacée vers la corbeille");
       setIsDeleteDialogOpen(false);
       setOrderToDelete(null);
       fetchOrders();
     } catch (error) {
-      console.error('Error deleting order:', error);
+      console.error('Error moving order to trash:', error);
       toast.error("Erreur lors de la suppression");
     }
   };
@@ -540,7 +542,7 @@ const Orders = () => {
                 </AlertDialogTitle>
               </div>
               <AlertDialogDescription className="text-lg">
-                Êtes-vous absolument certain de vouloir supprimer la commande{" "}
+                Êtes-vous certain de vouloir supprimer la commande{" "}
                 <span className="font-bold text-destructive">
                   {orderToDelete?.order_number}
                 </span>
@@ -548,7 +550,7 @@ const Orders = () => {
                 <br />
                 <br />
                 <span className="text-sm text-muted-foreground">
-                  Cette action ne peut pas être annulée. Toutes les données liées à cette commande seront définitivement perdues.
+                  La commande sera déplacée vers la corbeille et pourra être restaurée pendant 45 jours par un administrateur.
                 </span>
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -558,7 +560,7 @@ const Orders = () => {
                 onClick={handleDeleteOrder}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Oui, supprimer définitivement
+                Oui, déplacer vers la corbeille
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

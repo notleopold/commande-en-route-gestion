@@ -343,16 +343,18 @@ const Clients = () => {
     if (!clientToDelete) return;
 
     try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', clientToDelete.id);
+      // Move to trash instead of permanent delete
+      const { error } = await supabase.rpc('move_to_trash', {
+        p_table_name: 'clients',
+        p_item_id: clientToDelete.id,
+        p_reason: 'Suppression utilisateur'
+      });
 
       if (error) throw error;
 
       toast({
         title: "Succès",
-        description: "Client supprimé avec succès",
+        description: "Client déplacé vers la corbeille",
       });
 
       setIsDeleteDialogOpen(false);
@@ -364,7 +366,7 @@ const Clients = () => {
         setSelectedClient(null);
       }
     } catch (error) {
-      console.error('Error deleting client:', error);
+      console.error('Error moving client to trash:', error);
       toast({
         title: "Erreur",
         description: "Impossible de supprimer le client",
@@ -1445,27 +1447,27 @@ const Clients = () => {
                 ATTENTION CETTE ACTION EST IRRÉVERSIBLE
               </AlertDialogTitle>
             </div>
-            <AlertDialogDescription className="text-lg">
-              Êtes-vous absolument certain de vouloir supprimer le client{" "}
-              <span className="font-bold text-destructive">
-                {clientToDelete?.name}
-              </span>
-              ?
-              <br />
-              <br />
-              <span className="text-sm text-muted-foreground">
-                Cette action ne peut pas être annulée. Toutes les données liées à ce client (commandes, paiements, etc.) seront définitivement perdues.
-              </span>
-            </AlertDialogDescription>
+              <AlertDialogDescription className="text-lg">
+                Êtes-vous certain de vouloir supprimer le client{" "}
+                <span className="font-bold text-destructive">
+                  {clientToDelete?.name}
+                </span>
+                ?
+                <br />
+                <br />
+                <span className="text-sm text-muted-foreground">
+                  Le client sera déplacé vers la corbeille et pourra être restauré pendant 45 jours par un administrateur.
+                </span>
+              </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteClient}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Oui, supprimer définitivement
-            </AlertDialogAction>
+              <AlertDialogAction 
+                onClick={handleDeleteClient}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Oui, déplacer vers la corbeille
+              </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
