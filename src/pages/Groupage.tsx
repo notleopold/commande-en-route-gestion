@@ -1,201 +1,332 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Edit, Eye, Boxes, Users, DollarSign } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Plus, Search, Filter, Eye, Edit, Package, Calculator, AlertTriangle, CheckCircle, XCircle, Clock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
-interface GroupageRequest {
+interface Groupage {
   id: string;
-  orders: string[];
-  destination: string;
-  totalWeight: number;
-  totalVolume: number;
-  requestDate: string;
-  status: "pending" | "quoted" | "accepted" | "shipped" | "delivered";
-  quotedPrice?: number;
-  forwarder?: string;
-  estimatedDeparture?: string;
+  container_id: string;
+  transitaire: string;
+  available_space_pallets: number;
+  max_space_pallets: number;
+  available_weight: number;
+  max_weight: number;
+  available_volume: number;
+  max_volume: number;
+  allows_dangerous_goods: boolean;
+  cost_per_palette: number;
+  cost_per_kg: number;
+  cost_per_m3: number;
+  departure_date?: string;
+  arrival_date?: string;
+  status: string;
   notes?: string;
+  container?: {
+    number: string;
+    type: string;
+    etd?: string;
+    eta?: string;
+  };
+  groupage_bookings?: GroupageBooking[];
 }
 
-const mockGroupageRequests: GroupageRequest[] = [
-  {
-    id: "GRP-001",
-    orders: ["CMD-001", "CMD-003"],
-    destination: "Dakar",
-    totalWeight: 450,
-    totalVolume: 2.5,
-    requestDate: "2024-01-15",
-    status: "quoted",
-    quotedPrice: 890.00,
-    forwarder: "CMA CGM",
-    estimatedDeparture: "2024-02-01",
-    notes: "Groupage avec autres clients vers Dakar"
-  },
-  {
-    id: "GRP-002",
-    orders: ["CMD-004", "CMD-005"],
-    destination: "Abidjan",
-    totalWeight: 320,
-    totalVolume: 1.8,
-    requestDate: "2024-01-18",
-    status: "pending",
-    notes: "En attente de cotation"
-  },
-];
+interface GroupageBooking {
+  id: string;
+  groupage_id: string;
+  order_id: string;
+  palettes_booked: number;
+  weight_booked: number;
+  volume_booked: number;
+  cost_calculated: number;
+  has_dangerous_goods: boolean;
+  booking_status: string;
+  confirmed_by_transitaire: boolean;
+  transitaire_notes?: string;
+  order?: {
+    order_number: string;
+    supplier: string;
+    client?: { name: string };
+  };
+}
 
-const destinations = ["Dakar", "Abidjan", "Douala", "Lagos", "Casablanca", "Tunis"];
-const forwarders = ["CMA CGM", "MSC", "Maersk", "Hapag-Lloyd", "COSCO"];
+interface Order {
+  id: string;
+  order_number: string;
+  supplier: string;
+  current_transitaire?: string;
+  order_products?: Array<{
+    palette_quantity?: number;
+    carton_quantity?: number;
+    product?: { dangerous: boolean };
+  }>;
+  client?: { name: string };
+}
 
-const statusMap = {
-  pending: { label: "En attente", variant: "secondary" as const },
-  quoted: { label: "Cotation reçue", variant: "default" as const },
-  accepted: { label: "Accepté", variant: "default" as const },
-  shipped: { label: "Expédié", variant: "outline" as const },
-  delivered: { label: "Livré", variant: "default" as const },
-};
+const GROUPAGE_STATUSES = ["available", "full", "departed", "arrived"];
+const BOOKING_STATUSES = ["pending", "confirmed", "cancelled"];
+const TRANSITAIRES = ["SIFA", "TAF", "CEVA"];
 
 export default function Groupage() {
-  const [groupageRequests, setGroupageRequests] = useState<GroupageRequest[]>(mockGroupageRequests);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingRequest, setEditingRequest] = useState<GroupageRequest | null>(null);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [viewingRequest, setViewingRequest] = useState<GroupageRequest | null>(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [transitaireFilter, setTransitaireFilter] = useState("all");
+  const [groupages, setGroupages] = useState<Groupage[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const form = useForm({
+  // Dialog states
+  const [isViewGroupageOpen, setIsViewGroupageOpen] = useState(false);
+  const [isBookOrderOpen, setIsBookOrderOpen] = useState(false);
+  const [selectedGroupage, setSelectedGroupage] = useState<Groupage | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  const bookingForm = useForm({
     defaultValues: {
-      orders: "",
-      destination: "",
-      totalWeight: "",
-      totalVolume: "",
-      notes: "",
+      order_id: "",
+      palettes_booked: "",
+      weight_booked: "",
+      volume_booked: "",
     },
   });
 
-  const filteredRequests = groupageRequests.filter(request => {
-    const matchesSearch = request.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.destination.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = selectedStatus === "all" || request.status === selectedStatus;
-    
-    return matchesSearch && matchesStatus;
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [groupagesRes, ordersRes] = await Promise.all([
+        supabase.from('groupages').select(`
+          *,
+          container:containers(*),
+          groupage_bookings(*, order:orders(*, client:clients(*)))
+        `).order('created_at', { ascending: false }),
+        supabase.from('orders').select(`
+          *,
+          client:clients(*),
+          order_products(*, product:products(*))
+        `).is('container_id', null).order('created_at', { ascending: false })
+      ]);
+
+      if (groupagesRes.error) throw groupagesRes.error;
+      if (ordersRes.error) throw ordersRes.error;
+
+      setGroupages(groupagesRes.data || []);
+      setOrders(ordersRes.data || []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error("Erreur lors du chargement des données");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const styles = {
+      "available": "bg-green-100 text-green-800 hover:bg-green-100",
+      "full": "bg-orange-100 text-orange-800 hover:bg-orange-100",
+      "departed": "bg-blue-100 text-blue-800 hover:bg-blue-100",
+      "arrived": "bg-purple-100 text-purple-800 hover:bg-purple-100"
+    };
+    return <Badge className={styles[status as keyof typeof styles] || "bg-gray-100 text-gray-800"}>{status}</Badge>;
+  };
+
+  const getBookingStatusBadge = (status: string) => {
+    const styles = {
+      "pending": "bg-yellow-100 text-yellow-800 hover:bg-yellow-100",
+      "confirmed": "bg-green-100 text-green-800 hover:bg-green-100",
+      "cancelled": "bg-red-100 text-red-800 hover:bg-red-100"
+    };
+    return <Badge className={styles[status as keyof typeof styles] || "bg-gray-100 text-gray-800"}>{status}</Badge>;
+  };
+
+  const canBookOrder = (order: Order, groupage: Groupage) => {
+    // Check if same transitaire
+    if (order.current_transitaire !== groupage.transitaire) {
+      return { canBook: false, reason: `Commande chez ${order.current_transitaire}, groupage chez ${groupage.transitaire}` };
+    }
+
+    // Check if has dangerous goods and groupage allows them
+    const hasDangerous = order.order_products?.some(op => op.product?.dangerous);
+    if (hasDangerous && !groupage.allows_dangerous_goods) {
+      return { canBook: false, reason: "Groupage n'accepte pas les produits dangereux" };
+    }
+
+    // Check if groupage is available
+    if (groupage.status !== 'available') {
+      return { canBook: false, reason: `Groupage ${groupage.status}` };
+    }
+
+    // Check if enough space
+    const orderPalettes = order.order_products?.reduce((sum, op) => sum + (op.palette_quantity || 0), 0) || 0;
+    if (orderPalettes > groupage.available_space_pallets) {
+      return { canBook: false, reason: `Pas assez de place (${orderPalettes} palettes demandées, ${groupage.available_space_pallets} disponibles)` };
+    }
+
+    return { canBook: true, reason: "" };
+  };
+
+  const calculateBookingCost = (groupage: Groupage, palettes: number, weight: number, volume: number) => {
+    let cost = palettes * groupage.cost_per_palette;
+    if (groupage.cost_per_kg) cost += weight * groupage.cost_per_kg;
+    if (groupage.cost_per_m3) cost += volume * groupage.cost_per_m3;
+    return cost;
+  };
+
+  const handleBookOrder = async (data: any) => {
+    if (!selectedGroupage || !selectedOrder) return;
+
+    try {
+      const palettes = parseInt(data.palettes_booked);
+      const weight = parseFloat(data.weight_booked);
+      const volume = parseFloat(data.volume_booked);
+      const cost = calculateBookingCost(selectedGroupage, palettes, weight, volume);
+      
+      const hasDangerous = selectedOrder.order_products?.some(op => op.product?.dangerous) || false;
+
+      const bookingData = {
+        groupage_id: selectedGroupage.id,
+        order_id: selectedOrder.id,
+        palettes_booked: palettes,
+        weight_booked: weight,
+        volume_booked: volume,
+        cost_calculated: cost,
+        has_dangerous_goods: hasDangerous,
+        booking_status: 'pending'
+      };
+
+      const { error } = await supabase
+        .from('groupage_bookings')
+        .insert([bookingData]);
+
+      if (error) throw error;
+
+      // Update groupage available space
+      const { error: updateError } = await supabase
+        .from('groupages')
+        .update({
+          available_space_pallets: selectedGroupage.available_space_pallets - palettes,
+          available_weight: selectedGroupage.available_weight - weight,
+          available_volume: selectedGroupage.available_volume - volume
+        })
+        .eq('id', selectedGroupage.id);
+
+      if (updateError) throw updateError;
+
+      toast.success("Réservation créée avec succès");
+      setIsBookOrderOpen(false);
+      bookingForm.reset();
+      fetchData();
+    } catch (error) {
+      console.error('Error booking order:', error);
+      toast.error("Erreur lors de la réservation");
+    }
+  };
+
+  const handleConfirmBooking = async (bookingId: string, confirm: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('groupage_bookings')
+        .update({
+          booking_status: confirm ? 'confirmed' : 'cancelled',
+          confirmed_by_transitaire: confirm
+        })
+        .eq('id', bookingId);
+
+      if (error) throw error;
+
+      toast.success(confirm ? "Réservation confirmée" : "Réservation annulée");
+      fetchData();
+    } catch (error) {
+      console.error('Error updating booking:', error);
+      toast.error("Erreur lors de la mise à jour");
+    }
+  };
+
+  const getUsagePercentage = (used: number, total: number) => {
+    return total > 0 ? (used / total) * 100 : 0;
+  };
+
+  const filteredGroupages = groupages.filter(groupage => {
+    const matchesSearch = groupage.container?.number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         groupage.transitaire.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || groupage.status === statusFilter;
+    const matchesTransitaire = transitaireFilter === "all" || groupage.transitaire === transitaireFilter;
+    return matchesSearch && matchesStatus && matchesTransitaire;
   });
 
-  const handleAddRequest = () => {
-    form.reset();
-    setEditingRequest(null);
-    setDialogOpen(true);
-  };
-
-  const handleEditRequest = (request: GroupageRequest) => {
-    form.reset({
-      orders: request.orders.join(", "),
-      destination: request.destination,
-      totalWeight: request.totalWeight.toString(),
-      totalVolume: request.totalVolume.toString(),
-      notes: request.notes || "",
-    });
-    setEditingRequest(request);
-    setDialogOpen(true);
-  };
-
-  const handleViewRequest = (request: GroupageRequest) => {
-    setViewingRequest(request);
-    setViewDialogOpen(true);
-  };
-
-  const handleAcceptQuote = (requestId: string) => {
-    setGroupageRequests(prev => prev.map(r => 
-      r.id === requestId 
-        ? { ...r, status: "accepted" as const }
-        : r
-    ));
-    toast.success("Cotation acceptée");
-  };
-
-  const onSubmit = (data: any) => {
-    const requestData = {
-      ...data,
-      totalWeight: parseFloat(data.totalWeight),
-      totalVolume: parseFloat(data.totalVolume),
-      orders: data.orders.split(",").map((s: string) => s.trim()),
-      id: editingRequest?.id || `GRP-${Date.now()}`,
-      status: editingRequest?.status || "pending",
-      requestDate: editingRequest?.requestDate || new Date().toISOString().split('T')[0],
-    };
-
-    if (editingRequest) {
-      setGroupageRequests(prev => prev.map(r => r.id === editingRequest.id ? requestData : r));
-      toast.success("Demande de groupage modifiée avec succès");
-    } else {
-      setGroupageRequests(prev => [...prev, requestData]);
-      toast.success("Demande de groupage créée avec succès");
-    }
-    
-    setDialogOpen(false);
-    form.reset();
-  };
-
-  const totalPendingWeight = groupageRequests
-    .filter(r => r.status === "pending" || r.status === "quoted")
-    .reduce((sum, r) => sum + r.totalWeight, 0);
+  if (loading) {
+    return (
+      <Layout title="Groupage">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Chargement...</div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
-    <Layout title="Gestion des Groupages">
+    <Layout title="Groupage">
       <div className="space-y-6">
         {/* Header avec stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Demandes</CardTitle>
-              <Boxes className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Total Groupages</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{groupageRequests.length}</div>
+              <div className="text-2xl font-bold">{groupages.length}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Disponibles</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {groupages.filter(g => g.status === "available").length}
+              </div>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">En Attente</CardTitle>
-              <Users className="h-4 w-4 text-orange-600" />
+              <Clock className="h-4 w-4 text-yellow-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {groupageRequests.filter(r => r.status === "pending").length}
+                {groupages.reduce((sum, g) => sum + (g.groupage_bookings?.filter(b => b.booking_status === 'pending').length || 0), 0)}
               </div>
             </CardContent>
           </Card>
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Cotations Reçues</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-600" />
+              <CardTitle className="text-sm font-medium">Revenus Estimés</CardTitle>
+              <Calculator className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {groupageRequests.filter(r => r.status === "quoted").length}
+                {groupages.reduce((sum, g) => 
+                  sum + (g.groupage_bookings?.reduce((bookingSum, b) => bookingSum + b.cost_calculated, 0) || 0), 0
+                ).toFixed(0)} €
               </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Poids Total (kg)</CardTitle>
-              <Boxes className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalPendingWeight}</div>
             </CardContent>
           </Card>
         </div>
@@ -213,277 +344,427 @@ export default function Groupage() {
               />
             </div>
             
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Statut" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous les statuts</SelectItem>
-                {Object.entries(statusMap).map(([key, value]) => (
-                  <SelectItem key={key} value={key}>{value.label}</SelectItem>
+                {GROUPAGE_STATUSES.map(status => (
+                  <SelectItem key={status} value={status}>{status}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={transitaireFilter} onValueChange={setTransitaireFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Transitaire" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les transitaires</SelectItem>
+                {TRANSITAIRES.map(transitaire => (
+                  <SelectItem key={transitaire} value={transitaire}>{transitaire}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleAddRequest}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouvelle Demande
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingRequest ? "Modifier la demande de groupage" : "Nouvelle demande de groupage"}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingRequest ? "Modifiez les informations de la demande" : "Créez une nouvelle demande de groupage"}
-                </DialogDescription>
-              </DialogHeader>
-              
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="orders"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Commandes à grouper (séparées par des virgules)</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="CMD-001, CMD-002" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="destination"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Destination</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner une destination" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {destinations.map(destination => (
-                              <SelectItem key={destination} value={destination}>
-                                {destination}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="totalWeight"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Poids total (kg)</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" step="0.1" placeholder="0.0" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="totalVolume"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Volume total (m³)</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="number" step="0.1" placeholder="0.0" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notes</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} placeholder="Informations complémentaires..." />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                      Annuler
-                    </Button>
-                    <Button type="submit">
-                      {editingRequest ? "Modifier" : "Créer"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
         </div>
 
-        {/* Table des demandes de groupage */}
+        {/* Table des groupages */}
         <Card>
           <CardHeader>
-            <CardTitle>Demandes de groupage</CardTitle>
-            <CardDescription>
-              Gérez vos demandes de groupage pour optimiser les coûts
-            </CardDescription>
+            <CardTitle>Espaces de groupage disponibles</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Destination</TableHead>
-                  <TableHead>Commandes</TableHead>
-                  <TableHead>Poids/Volume</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Prix Coté</TableHead>
+                  <TableHead>Conteneur</TableHead>
+                  <TableHead>Transitaire</TableHead>
+                  <TableHead>Capacité</TableHead>
+                  <TableHead>Disponible</TableHead>
+                  <TableHead>Prix/Palette</TableHead>
+                  <TableHead>Départ/Arrivée</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRequests.map((request) => (
-                  <TableRow key={request.id}>
-                    <TableCell className="font-medium">{request.id}</TableCell>
-                    <TableCell>{request.destination}</TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {request.orders.join(", ")}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div>{request.totalWeight} kg</div>
-                        <div>{request.totalVolume} m³</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(request.requestDate).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {request.quotedPrice ? `${request.quotedPrice.toFixed(2)} €` : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={statusMap[request.status].variant}>
-                        {statusMap[request.status].label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewRequest(request)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditRequest(request)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        {request.status === "quoted" && (
+                {filteredGroupages.map((groupage) => {
+                  const usedPallets = groupage.max_space_pallets - groupage.available_space_pallets;
+                  const usagePercentage = getUsagePercentage(usedPallets, groupage.max_space_pallets);
+
+                  return (
+                    <TableRow key={groupage.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{groupage.container?.number}</span>
+                          <Badge variant="outline">{groupage.container?.type}</Badge>
+                          {groupage.allows_dangerous_goods && (
+                            <Badge variant="destructive" className="text-xs">
+                              <AlertTriangle className="mr-1 h-3 w-3" />
+                              Dangereux OK
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{groupage.transitaire}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div>{groupage.max_space_pallets} palettes max</div>
+                          <div className="text-muted-foreground">
+                            {groupage.max_weight/1000}T | {groupage.max_volume}m³
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm">
+                            <span>{groupage.available_space_pallets}/{groupage.max_space_pallets}</span>
+                            <Progress value={100 - usagePercentage} className="w-20 h-2" />
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {(groupage.available_weight/1000).toFixed(1)}T | {groupage.available_volume.toFixed(1)}m³
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div className="font-medium">{groupage.cost_per_palette.toFixed(2)} €</div>
+                          {groupage.cost_per_kg > 0 && (
+                            <div className="text-muted-foreground">+{groupage.cost_per_kg.toFixed(2)} €/kg</div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div>Départ: {groupage.departure_date ? new Date(groupage.departure_date).toLocaleDateString() : "TBD"}</div>
+                          <div className="text-muted-foreground">
+                            Arrivée: {groupage.arrival_date ? new Date(groupage.arrival_date).toLocaleDateString() : "TBD"}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(groupage.status)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
                           <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleAcceptQuote(request.id)}
+                            onClick={() => {
+                              setSelectedGroupage(groupage);
+                              setIsViewGroupageOpen(true);
+                            }}
                           >
-                            Accepter
+                            <Eye className="h-4 w-4" />
                           </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedGroupage(groupage);
+                              setIsBookOrderOpen(true);
+                            }}
+                            disabled={groupage.status !== 'available'}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
 
-        {/* Dialog de visualisation */}
-        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-2xl">
+        {/* Dialog pour voir les détails d'un groupage */}
+        <Dialog open={isViewGroupageOpen} onOpenChange={setIsViewGroupageOpen}>
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>Détails de la demande {viewingRequest?.id}</DialogTitle>
+              <DialogTitle>Détails du groupage - {selectedGroupage?.container?.number}</DialogTitle>
             </DialogHeader>
-            {viewingRequest && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-semibold">Commandes incluses</h4>
-                    <p className="text-sm text-muted-foreground">{viewingRequest.orders.join(", ")}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Destination</h4>
-                    <p className="text-sm text-muted-foreground">{viewingRequest.destination}</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-semibold">Poids total</h4>
-                    <p className="text-sm text-muted-foreground">{viewingRequest.totalWeight} kg</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Volume total</h4>
-                    <p className="text-sm text-muted-foreground">{viewingRequest.totalVolume} m³</p>
-                  </div>
-                </div>
-                {viewingRequest.quotedPrice && (
-                  <div className="grid grid-cols-2 gap-4">
+            {selectedGroupage && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-4">
                     <div>
-                      <h4 className="font-semibold">Prix coté</h4>
-                      <p className="text-sm text-muted-foreground">{viewingRequest.quotedPrice.toFixed(2)} €</p>
+                      <h4 className="font-medium mb-2">Informations générales</h4>
+                      <div className="space-y-2 text-sm">
+                        <div>Transitaire: {selectedGroupage.transitaire}</div>
+                        <div>Statut: {getStatusBadge(selectedGroupage.status)}</div>
+                        <div>Produits dangereux: {selectedGroupage.allows_dangerous_goods ? "Autorisés" : "Interdits"}</div>
+                      </div>
                     </div>
+                    
                     <div>
-                      <h4 className="font-semibold">Transitaire</h4>
-                      <p className="text-sm text-muted-foreground">{viewingRequest.forwarder || "-"}</p>
+                      <h4 className="font-medium mb-2">Capacités</h4>
+                      <div className="space-y-2 text-sm">
+                        <div>Palettes: {selectedGroupage.available_space_pallets}/{selectedGroupage.max_space_pallets}</div>
+                        <div>Poids: {(selectedGroupage.available_weight/1000).toFixed(1)}/{(selectedGroupage.max_weight/1000).toFixed(1)} T</div>
+                        <div>Volume: {selectedGroupage.available_volume.toFixed(1)}/{selectedGroupage.max_volume.toFixed(1)} m³</div>
+                      </div>
                     </div>
                   </div>
-                )}
-                {viewingRequest.estimatedDeparture && (
-                  <div>
-                    <h4 className="font-semibold">Départ estimé</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(viewingRequest.estimatedDeparture).toLocaleDateString()}
-                    </p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium mb-2">Tarification</h4>
+                      <div className="space-y-2 text-sm">
+                        <div>Prix par palette: {selectedGroupage.cost_per_palette.toFixed(2)} €</div>
+                        {selectedGroupage.cost_per_kg > 0 && (
+                          <div>Prix par kg: {selectedGroupage.cost_per_kg.toFixed(2)} €</div>
+                        )}
+                        {selectedGroupage.cost_per_m3 > 0 && (
+                          <div>Prix par m³: {selectedGroupage.cost_per_m3.toFixed(2)} €</div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-medium mb-2">Dates</h4>
+                      <div className="space-y-2 text-sm">
+                        <div>Départ: {selectedGroupage.departure_date ? new Date(selectedGroupage.departure_date).toLocaleDateString() : "Non défini"}</div>
+                        <div>Arrivée: {selectedGroupage.arrival_date ? new Date(selectedGroupage.arrival_date).toLocaleDateString() : "Non défini"}</div>
+                      </div>
+                    </div>
                   </div>
-                )}
-                {viewingRequest.notes && (
-                  <div>
-                    <h4 className="font-semibold">Notes</h4>
-                    <p className="text-sm text-muted-foreground">{viewingRequest.notes}</p>
-                  </div>
-                )}
+                </div>
+
+                {/* Réservations */}
                 <div>
-                  <h4 className="font-semibold">Statut</h4>
-                  <Badge variant={statusMap[viewingRequest.status].variant}>
-                    {statusMap[viewingRequest.status].label}
-                  </Badge>
+                  <h4 className="font-medium mb-4">Réservations ({selectedGroupage.groupage_bookings?.length || 0})</h4>
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Commande</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Palettes</TableHead>
+                          <TableHead>Coût</TableHead>
+                          <TableHead>Statut</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedGroupage.groupage_bookings?.map((booking) => (
+                          <TableRow key={booking.id}>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{booking.order?.order_number}</div>
+                                <div className="text-sm text-muted-foreground">{booking.order?.supplier}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>{booking.order?.client?.name || "-"}</TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                <div>{booking.palettes_booked} palettes</div>
+                                <div className="text-muted-foreground">
+                                  {(booking.weight_booked/1000).toFixed(1)}T | {booking.volume_booked.toFixed(1)}m³
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>{booking.cost_calculated.toFixed(2)} €</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {getBookingStatusBadge(booking.booking_status)}
+                                {booking.has_dangerous_goods && (
+                                  <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {booking.booking_status === 'pending' && (
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleConfirmBooking(booking.id, true)}
+                                  >
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleConfirmBooking(booking.id, false)}
+                                  >
+                                    <XCircle className="h-4 w-4 text-red-600" />
+                                  </Button>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog pour réserver une commande */}
+        <Dialog open={isBookOrderOpen} onOpenChange={setIsBookOrderOpen}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Réserver dans le groupage - {selectedGroupage?.container?.number}</DialogTitle>
+            </DialogHeader>
+            {selectedGroupage && (
+              <div className="space-y-6">
+                <div className="bg-muted p-4 rounded-lg">
+                  <h4 className="font-medium mb-2">Espace disponible</h4>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>Palettes: {selectedGroupage.available_space_pallets}/{selectedGroupage.max_space_pallets}</div>
+                    <div>Poids: {(selectedGroupage.available_weight/1000).toFixed(1)}T disponibles</div>
+                    <div>Volume: {selectedGroupage.available_volume.toFixed(1)}m³ disponibles</div>
+                  </div>
+                  <div className="mt-2 text-sm">
+                    <strong>Coût par palette: {selectedGroupage.cost_per_palette.toFixed(2)} €</strong>
+                  </div>
+                </div>
+
+                <Form {...bookingForm}>
+                  <form onSubmit={bookingForm.handleSubmit(handleBookOrder)} className="space-y-4">
+                    <FormField
+                      control={bookingForm.control}
+                      name="order_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Commande à réserver</FormLabel>
+                          <Select onValueChange={(value) => {
+                            field.onChange(value);
+                            const order = orders.find(o => o.id === value);
+                            setSelectedOrder(order || null);
+                          }} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Sélectionner une commande" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <ScrollArea className="h-64">
+                                {orders.map(order => {
+                                  const compatibility = canBookOrder(order, selectedGroupage);
+                                  const orderPalettes = order.order_products?.reduce((sum, op) => sum + (op.palette_quantity || 0), 0) || 0;
+                                  
+                                  return (
+                                    <SelectItem 
+                                      key={order.id} 
+                                      value={order.id}
+                                      disabled={!compatibility.canBook}
+                                    >
+                                      <div className="flex items-center justify-between w-full">
+                                        <div>
+                                          <div className="font-medium">{order.order_number}</div>
+                                          <div className="text-sm text-muted-foreground">
+                                            {order.supplier} | {orderPalettes} palettes
+                                          </div>
+                                        </div>
+                                        {!compatibility.canBook && (
+                                          <div className="text-xs text-red-600 ml-2">
+                                            {compatibility.reason}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </SelectItem>
+                                  );
+                                })}
+                              </ScrollArea>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {selectedOrder && (
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <h5 className="font-medium mb-2">Détails de la commande sélectionnée</h5>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>Client: {selectedOrder.client?.name || "Non assigné"}</div>
+                          <div>Fournisseur: {selectedOrder.supplier}</div>
+                          <div>Transitaire: {selectedOrder.current_transitaire}</div>
+                          <div>
+                            Palettes totales: {selectedOrder.order_products?.reduce((sum, op) => sum + (op.palette_quantity || 0), 0) || 0}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={bookingForm.control}
+                        name="palettes_booked"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Palettes à réserver</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="number" min="1" max={selectedGroupage.available_space_pallets} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={bookingForm.control}
+                        name="weight_booked"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Poids (kg)</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="number" step="0.1" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={bookingForm.control}
+                        name="volume_booked"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Volume (m³)</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="number" step="0.1" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {bookingForm.watch("palettes_booked") && (
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <h5 className="font-medium mb-2">Estimation du coût</h5>
+                        <div className="text-lg font-bold">
+                          {calculateBookingCost(
+                            selectedGroupage,
+                            parseInt(bookingForm.watch("palettes_booked")) || 0,
+                            parseFloat(bookingForm.watch("weight_booked")) || 0,
+                            parseFloat(bookingForm.watch("volume_booked")) || 0
+                          ).toFixed(2)} €
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Cette réservation sera en attente de confirmation par le transitaire
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setIsBookOrderOpen(false)}>
+                        Annuler
+                      </Button>
+                      <Button type="submit" disabled={!selectedOrder}>
+                        Réserver
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               </div>
             )}
           </DialogContent>

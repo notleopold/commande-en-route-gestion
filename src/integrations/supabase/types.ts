@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key: string
+          setting_value: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -91,6 +132,146 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      groupage_bookings: {
+        Row: {
+          booking_date: string | null
+          booking_status: string | null
+          confirmed_by_transitaire: boolean | null
+          cost_calculated: number
+          created_at: string
+          groupage_id: string
+          has_dangerous_goods: boolean | null
+          id: string
+          order_id: string
+          palettes_booked: number
+          transitaire_notes: string | null
+          updated_at: string
+          volume_booked: number
+          weight_booked: number
+        }
+        Insert: {
+          booking_date?: string | null
+          booking_status?: string | null
+          confirmed_by_transitaire?: boolean | null
+          cost_calculated?: number
+          created_at?: string
+          groupage_id: string
+          has_dangerous_goods?: boolean | null
+          id?: string
+          order_id: string
+          palettes_booked?: number
+          transitaire_notes?: string | null
+          updated_at?: string
+          volume_booked?: number
+          weight_booked?: number
+        }
+        Update: {
+          booking_date?: string | null
+          booking_status?: string | null
+          confirmed_by_transitaire?: boolean | null
+          cost_calculated?: number
+          created_at?: string
+          groupage_id?: string
+          has_dangerous_goods?: boolean | null
+          id?: string
+          order_id?: string
+          palettes_booked?: number
+          transitaire_notes?: string | null
+          updated_at?: string
+          volume_booked?: number
+          weight_booked?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groupage_bookings_groupage_id_fkey"
+            columns: ["groupage_id"]
+            isOneToOne: false
+            referencedRelation: "groupages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groupage_bookings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groupages: {
+        Row: {
+          allows_dangerous_goods: boolean | null
+          arrival_date: string | null
+          available_space_pallets: number
+          available_volume: number
+          available_weight: number
+          container_id: string
+          cost_per_kg: number | null
+          cost_per_m3: number | null
+          cost_per_palette: number
+          created_at: string
+          departure_date: string | null
+          id: string
+          max_space_pallets: number
+          max_volume: number
+          max_weight: number
+          notes: string | null
+          status: string | null
+          transitaire: string
+          updated_at: string
+        }
+        Insert: {
+          allows_dangerous_goods?: boolean | null
+          arrival_date?: string | null
+          available_space_pallets?: number
+          available_volume?: number
+          available_weight?: number
+          container_id: string
+          cost_per_kg?: number | null
+          cost_per_m3?: number | null
+          cost_per_palette?: number
+          created_at?: string
+          departure_date?: string | null
+          id?: string
+          max_space_pallets?: number
+          max_volume?: number
+          max_weight?: number
+          notes?: string | null
+          status?: string | null
+          transitaire: string
+          updated_at?: string
+        }
+        Update: {
+          allows_dangerous_goods?: boolean | null
+          arrival_date?: string | null
+          available_space_pallets?: number
+          available_volume?: number
+          available_weight?: number
+          container_id?: string
+          cost_per_kg?: number | null
+          cost_per_m3?: number | null
+          cost_per_palette?: number
+          created_at?: string
+          departure_date?: string | null
+          id?: string
+          max_space_pallets?: number
+          max_volume?: number
+          max_weight?: number
+          notes?: string | null
+          status?: string | null
+          transitaire?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groupages_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "containers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_products: {
         Row: {
@@ -346,6 +527,83 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          department: string | null
+          email: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string
+          file_url: string | null
+          generated_by: string | null
+          id: string
+          parameters: Json | null
+          status: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          file_url?: string | null
+          generated_by?: string | null
+          id?: string
+          parameters?: Json | null
+          status?: string | null
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          file_url?: string | null
+          generated_by?: string | null
+          id?: string
+          parameters?: Json | null
+          status?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
