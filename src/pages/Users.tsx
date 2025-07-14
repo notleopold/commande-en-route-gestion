@@ -65,12 +65,7 @@ const Users = () => {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('manage-users', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        }
-      });
+      const { data, error } = await supabase.functions.invoke('manage-users');
 
       if (error) throw error;
       setUsers(data.users || []);
@@ -91,11 +86,8 @@ const Users = () => {
     setSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke('manage-users', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
         body: {
+          method: 'POST',
           email: newUserForm.email,
           password: newUserForm.password,
           full_name: `${newUserForm.first_name} ${newUserForm.last_name}`,
@@ -134,11 +126,8 @@ const Users = () => {
     setSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke('manage-users', {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
         body: {
+          method: 'PUT',
           user_id: selectedUser.id,
           full_name: editUserForm.full_name,
           phone: editUserForm.phone,
@@ -168,11 +157,10 @@ const Users = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('manage-users', {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
-        body: { user_id: userId }
+        body: { 
+          method: 'DELETE',
+          user_id: userId 
+        }
       });
 
       if (error) throw error;

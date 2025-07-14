@@ -45,8 +45,16 @@ serve(async (req) => {
       throw new Error('Insufficient permissions')
     }
 
-    const { method } = req
-    const body = method !== 'GET' ? await req.json() : null
+    let method = req.method
+    let body = null
+    
+    if (method !== 'GET') {
+      body = await req.json()
+      // If method is passed in body, use that instead
+      if (body?.method) {
+        method = body.method
+      }
+    }
 
     if (method === 'GET') {
       // Get all users with their profiles and roles
