@@ -14,6 +14,7 @@ import { Building2, Plus, Search, Filter, Edit, Archive, Eye, Star } from "lucid
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
+import { useNavigate } from "react-router-dom";
 
 interface Supplier {
   id: string;
@@ -65,6 +66,7 @@ const Suppliers = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const form = useForm({
     defaultValues: {
@@ -850,7 +852,11 @@ const Suppliers = () => {
       {/* Suppliers Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredSuppliers.map((supplier) => (
-          <Card key={supplier.id} className="hover:shadow-lg transition-shadow">
+          <Card 
+            key={supplier.id} 
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => navigate(`/suppliers/${supplier.id}`)}
+          >
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
                 <div>
@@ -903,8 +909,26 @@ const Suppliers = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button size="sm" variant="outline" onClick={() => openEditDialog(supplier)}>
+              <div className="flex justify-between gap-2 pt-2">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/suppliers/${supplier.id}`);
+                  }}
+                >
+                  <Eye className="h-4 w-4 mr-1" />
+                  Voir
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEditDialog(supplier);
+                  }}
+                >
                   <Edit className="h-4 w-4" />
                 </Button>
               </div>
