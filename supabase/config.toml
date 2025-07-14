@@ -43,3 +43,6 @@ enable_phone_change_confirmations = false
 
 [functions.trash-cleanup]
 verify_jwt = false
+
+[functions.assign-admin-role]
+verify_jwt = true

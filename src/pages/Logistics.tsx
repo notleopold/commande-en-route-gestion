@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, MapPin, Calendar, Truck, Package, Clock, Eye, Edit } from "lucide-react";
+import { Plus, Search, MapPin, Calendar, Truck, Package, Clock, Eye, Edit, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 
 export default function Logistics() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -17,6 +19,8 @@ export default function Logistics() {
   const [isEditShipmentOpen, setIsEditShipmentOpen] = useState(false);
   const [isViewShipmentOpen, setIsViewShipmentOpen] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<any>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [logisticToDelete, setLogisticToDelete] = useState<any>(null);
   
   const [logistics] = useState([
     {
@@ -110,6 +114,21 @@ export default function Logistics() {
       "Disponible": "bg-green-100 text-green-800 hover:bg-green-100"
     };
     return <Badge className={styles[status] || ""}>{status}</Badge>;
+  };
+
+  const handleDeleteLogistic = (logistic: any) => {
+    setLogisticToDelete(logistic);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteLogistic = () => {
+    if (!logisticToDelete) return;
+    
+    // For now, just remove from state (since this is mock data)
+    // In a real app, you would call move_to_trash function
+    toast.success("Tâche logistique supprimée avec succès");
+    setDeleteDialogOpen(false);
+    setLogisticToDelete(null);
   };
 
   const filteredLogistics = logistics.filter(item =>
@@ -314,6 +333,9 @@ export default function Logistics() {
                           <Button variant="outline" size="sm" onClick={() => handleEditShipment(item)}>
                             <Edit className="h-4 w-4" />
                           </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDeleteLogistic(item)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -481,6 +503,17 @@ export default function Logistics() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDeleteLogistic}
+        title="ATTENTION CETTE ACTION EST IRRÉVERSIBLE"
+        description="Êtes-vous sûr de vouloir supprimer la tâche logistique"
+        itemName={logisticToDelete?.id}
+        confirmText="Oui, supprimer définitivement"
+        cancelText="Annuler"
+      />
     </div>
   );
 }

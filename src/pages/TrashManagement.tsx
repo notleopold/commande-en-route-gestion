@@ -7,11 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Trash2, RotateCcw, Search, Filter, AlertTriangle, Clock, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface DeletedItem {
   id: string;
@@ -24,6 +26,7 @@ interface DeletedItem {
 }
 
 const TrashManagement = () => {
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const [deletedItems, setDeletedItems] = useState<DeletedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -170,6 +173,31 @@ const TrashManagement = () => {
     const matchesTable = tableFilter === "all" || item.table_name === tableFilter;
     return matchesSearch && matchesTable;
   });
+
+  if (roleLoading) {
+    return (
+      <Layout title="Gestion de la corbeille">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg">Vérification des permissions...</div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Layout title="Gestion de la corbeille">
+        <div className="space-y-6">
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Accès refusé. Seuls les administrateurs peuvent accéder à la gestion de la corbeille.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Layout>
+    );
+  }
 
   if (loading) {
     return (

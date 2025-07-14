@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: Home },
@@ -23,13 +24,17 @@ const menuItems = [
   { title: "Groupage", url: "/groupage", icon: Boxes },
   { title: "Rapports", url: "/reports", icon: FileText },
   { title: "Utilisateurs", url: "/users", icon: Users },
-  { title: "Corbeille", url: "/trash", icon: Trash2 },
   { title: "Paramètres", url: "/settings", icon: Settings },
+];
+
+const adminMenuItems = [
+  { title: "Corbeille", url: "/trash", icon: Trash2 },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
+  const { isAdmin, loading } = useUserRole();
   const isCollapsed = state === "collapsed";
   
   const isActive = (path: string) => {
@@ -75,6 +80,33 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Admin Section - Only visible to admins */}
+        {isAdmin && !loading && (
+          <SidebarGroup>
+            <SidebarGroupLabel className={isCollapsed ? "hidden" : "block"}>
+              Administration
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink 
+                        to={item.url} 
+                        className={getNavClasses(item.url)}
+                        end={item.url === "/"}
+                      >
+                        <item.icon className="h-4 w-4 mr-2" />
+                        {!isCollapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );
