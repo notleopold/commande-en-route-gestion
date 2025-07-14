@@ -18,6 +18,7 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import TrashManagement from "./pages/TrashManagement";
 import NotFound from "./pages/NotFound";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -40,7 +41,7 @@ const App = () => (
           <Route path="/groupage" element={<Groupage />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/users" element={<Users />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/trash" element={<TrashManagement />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
