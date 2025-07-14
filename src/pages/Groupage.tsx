@@ -105,7 +105,7 @@ export default function Groupage() {
 
   const createGroupageForm = useForm({
     defaultValues: {
-      container_id: "",
+      container_number: "",
       transitaire: "",
       max_space_pallets: "",
       max_weight: "",
@@ -283,8 +283,26 @@ export default function Groupage() {
       const maxWeight = parseFloat(data.max_weight);
       const maxVolume = parseFloat(data.max_volume);
 
+      // Créer d'abord le conteneur s'il n'existe pas
+      let containerId = data.container_id;
+      if (!containerId && data.container_number) {
+        const { data: containerData, error: containerError } = await supabase
+          .from('containers')
+          .insert([{
+            number: data.container_number,
+            type: 'groupage',
+            transitaire: data.transitaire,
+            status: 'planning'
+          }])
+          .select()
+          .single();
+
+        if (containerError) throw containerError;
+        containerId = containerData.id;
+      }
+
       const groupageData = {
-        container_id: data.container_id,
+        container_id: containerId,
         transitaire: data.transitaire,
         max_space_pallets: maxPallets,
         available_space_pallets: maxPallets,
@@ -849,24 +867,13 @@ export default function Groupage() {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={createGroupageForm.control}
-                    name="container_id"
+                    name="container_number"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Conteneur</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Sélectionner un conteneur" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {containers.map(container => (
-                              <SelectItem key={container.id} value={container.id}>
-                                {container.number} - {container.type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormLabel>Numéro de conteneur</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="ex: CONT-001" />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
