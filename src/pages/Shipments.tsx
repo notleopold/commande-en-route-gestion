@@ -67,7 +67,7 @@ const statusMap = {
   delivered: { label: "Livré", variant: "default" as const },
 };
 
-export default function Shipments() {
+function Shipments() {
   const [shipments, setShipments] = useState<Shipment[]>(mockShipments);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -524,3 +524,5 @@ export default function Shipments() {
     </Layout>
   );
 }
+
+export default Shipments;

@@ -78,7 +78,7 @@ const GROUPAGE_STATUSES = ["available", "full", "departed", "arrived"];
 const BOOKING_STATUSES = ["pending", "confirmed", "cancelled"];
 const TRANSITAIRES = ["SIFA", "TAF", "CEVA"];
 
-export default function Groupage() {
+function Groupage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [transitaireFilter, setTransitaireFilter] = useState("all");
@@ -1076,3 +1076,5 @@ export default function Groupage() {
     </Layout>
   );
 }
+
+export default Groupage;
