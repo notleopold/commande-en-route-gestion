@@ -7,6 +7,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Suppliers from "./pages/Suppliers";
 import SupplierDetail from "./pages/SupplierDetail";
+import OrderDetail from "./pages/OrderDetail";
+import ProductDetail from "./pages/ProductDetail";
 import Products from "./pages/Products";
 import Clients from "./pages/Clients";
 import Orders from "./pages/Orders";
@@ -33,6 +35,8 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/suppliers" element={<Suppliers />} />
           <Route path="/suppliers/:id" element={<SupplierDetail />} />
+          <Route path="/orders/:id" element={<OrderDetail />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/products" element={<Products />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/orders" element={<Orders />} />

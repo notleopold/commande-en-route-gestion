@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,12 +61,17 @@ interface Product {
 const categories = ["Informatique", "Chimie", "Mécanique", "Électronique", "Mobilier"];
 const units = ["pièce", "kg", "litre", "mètre", "boîte"];
 const imdgClasses = [
-  "Classe 1", "Classe 2.1", "Classe 2.2", "Classe 2.3", "Classe 3", 
-  "Classe 4.1", "Classe 4.2", "Classe 4.3", "Classe 5.1", "Classe 5.2", 
-  "Classe 6.1", "Classe 6.2", "Classe 7", "Classe 8", "Classe 9"
+  "Classe 1 – Explosifs", "Classe 2.1 – Gaz inflammables", "Classe 2.2 – Gaz non inflammables", 
+  "Classe 2.3 – Gaz toxiques", "Classe 3 – Liquides inflammables", 
+  "Classe 4.1 – Solides inflammables", "Classe 4.2 – Matières auto-inflammables", 
+  "Classe 4.3 – Réagissant dangereusement à l'eau", "Classe 5.1 – Comburants", 
+  "Classe 5.2 – Peroxydes organiques", "Classe 6.1 – Substances toxiques", 
+  "Classe 6.2 – Substances infectieuses", "Classe 7 – Radioactifs", 
+  "Classe 8 – Corrosifs", "Classe 9 – Divers"
 ];
 
 export default function Products() {
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -1030,7 +1036,11 @@ export default function Products() {
               </TableHeader>
               <TableBody>
                 {filteredProducts.map((product) => (
-                  <TableRow key={product.id}>
+                  <TableRow 
+                    key={product.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/products/${product.id}`)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div>

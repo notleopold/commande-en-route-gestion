@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ const PAYMENT_TYPES = [
 ];
 
 const Orders = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -529,7 +531,11 @@ const Orders = () => {
               </TableHeader>
               <TableBody>
                 {filteredOrders.map(order => (
-                  <TableRow key={order.id}>
+                  <TableRow 
+                    key={order.id} 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/orders/${order.id}`)}
+                  >
                     <TableCell className="font-medium">{order.order_number}</TableCell>
                     <TableCell>{order.client?.name || "-"}</TableCell>
                     <TableCell>{order.supplier}</TableCell>
