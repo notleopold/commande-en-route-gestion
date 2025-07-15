@@ -244,18 +244,57 @@ export default function Containers() {
   };
 
   const getCompatibleOrders = (transitaire: string) => {
-    return orders.filter(order => 
+    const transitaireOrders = orders.filter(order => 
       order.current_transitaire === transitaire && 
       !order.container_id
     );
+
+    // Get currently loaded IMDG classes
+    const currentImdgClasses = containerOrders
+      .flatMap(order => order.order_products || [])
+      .map(op => op.products?.imdg_class)
+      .filter(Boolean);
+
+    return transitaireOrders.filter(order => {
+      if (!order.order_products) return true;
+      
+      const orderImdgClasses = order.order_products
+        .map(op => op.products?.imdg_class)
+        .filter(Boolean);
+      
+      // Check compatibility with current container load
+      const allClasses = [...currentImdgClasses, ...orderImdgClasses];
+      const compatibility = checkContainerCompatibility(allClasses);
+      
+      return compatibility.compatible;
+    });
   };
 
   const getIncompatibleOrders = (transitaire: string) => {
-    return orders.filter(order => 
-      order.current_transitaire && 
-      order.current_transitaire !== transitaire && 
+    const transitaireOrders = orders.filter(order => 
+      order.current_transitaire === transitaire && 
       !order.container_id
     );
+
+    // Get currently loaded IMDG classes
+    const currentImdgClasses = containerOrders
+      .flatMap(order => order.order_products || [])
+      .map(op => op.products?.imdg_class)
+      .filter(Boolean);
+
+    return transitaireOrders.filter(order => {
+      if (!order.order_products) return false;
+      
+      const orderImdgClasses = order.order_products
+        .map(op => op.products?.imdg_class)
+        .filter(Boolean);
+      
+      // Check compatibility with current container load
+      const allClasses = [...currentImdgClasses, ...orderImdgClasses];
+      const compatibility = checkContainerCompatibility(allClasses);
+      
+      return !compatibility.compatible;
+    });
   };
 
   const handleLinkOrderToContainer = async (orderId: string, containerId: string) => {
