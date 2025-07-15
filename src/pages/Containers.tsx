@@ -229,16 +229,23 @@ export default function Containers() {
 
   const handleLoadingPlan = (container: ContainerData) => {
     setSelectedContainer(container);
-    // Get available orders that match this container's transitaire and are not already assigned
-    const available = orders.filter(order => 
-      order.current_transitaire === container.transitaire && 
-      !order.container_id
-    );
-    setAvailableOrders(available);
     
-    // Get orders already assigned to this container
-    const assigned = orders.filter(order => order.container_id === container.id);
-    setContainerOrders(assigned);
+    // Use real orders from database instead of static data
+    if (orders && orders.length > 0) {
+      // Get available orders that match this container's transitaire and are not already assigned
+      const available = orders.filter(order => 
+        order.current_transitaire === container.transitaire && 
+        !order.container_id
+      );
+      setAvailableOrders(available);
+      
+      // Get orders already assigned to this container
+      const assigned = orders.filter(order => order.container_id === container.id);
+      setContainerOrders(assigned);
+    } else {
+      setAvailableOrders([]);
+      setContainerOrders([]);
+    }
     
     setIsLoadingPlanOpen(true);
   };
@@ -782,7 +789,7 @@ export default function Containers() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="max-h-64 overflow-y-auto">
-                      {availableOrders.map((order) => {
+                      {availableOrders.length > 0 ? availableOrders.map((order) => {
                         const compatibility = order.order_products ? checkOrderCompatibility(order.order_products) : { compatible: true, conflicts: [] };
                         return (
                           <div key={order.id} className="flex items-center justify-between p-2 border rounded mb-2">
