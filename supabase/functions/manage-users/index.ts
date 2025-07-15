@@ -45,18 +45,10 @@ serve(async (req) => {
       throw new Error('Insufficient permissions')
     }
 
-    let method = req.method
-    let body = null
-    
-    if (method !== 'GET') {
-      body = await req.json()
-      // If method is passed in body, use that instead
-      if (body?.method) {
-        method = body.method
-      }
-    }
+    const body = req.method !== 'GET' ? await req.json() : null
+    const action = body?.action || req.method.toLowerCase()
 
-    if (method === 'GET') {
+    if (action === 'get' || req.method === 'GET') {
       // Get all users with their profiles and roles
       const { data: profiles, error: profilesError } = await supabaseAdmin
         .from('profiles')
@@ -91,7 +83,7 @@ serve(async (req) => {
       )
     }
 
-    if (method === 'POST') {
+    if (action === 'create') {
       // Create new user
       const { email, password, full_name, role } = body
 
@@ -129,7 +121,7 @@ serve(async (req) => {
       )
     }
 
-    if (method === 'PUT') {
+    if (action === 'update') {
       // Update user
       const { user_id, full_name, phone, department, role } = body
 
@@ -163,7 +155,7 @@ serve(async (req) => {
       )
     }
 
-    if (method === 'DELETE') {
+    if (action === 'delete') {
       // Disable/ban user
       const { user_id } = body
 

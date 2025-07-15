@@ -65,10 +65,26 @@ const Users = () => {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('manage-users');
+      // Get profiles with their roles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select(`
+          *,
+          user_roles (role)
+        `)
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setUsers(data.users || []);
+      if (profilesError) throw profilesError;
+
+      // Transform the data to match expected format
+      const users = profiles?.map(profile => ({
+        ...profile,
+        role: (profile.user_roles as any)?.[0]?.role || 'user',
+        disabled: false, // For now, we'll set this to false since we can't easily check auth status
+        email_confirmed: true
+      })) || [];
+
+      setUsers(users);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Erreur lors du chargement des utilisateurs');
@@ -87,7 +103,7 @@ const Users = () => {
     try {
       const { data, error } = await supabase.functions.invoke('manage-users', {
         body: {
-          method: 'POST',
+          action: 'create',
           email: newUserForm.email,
           password: newUserForm.password,
           full_name: `${newUserForm.first_name} ${newUserForm.last_name}`,
@@ -127,7 +143,7 @@ const Users = () => {
     try {
       const { data, error } = await supabase.functions.invoke('manage-users', {
         body: {
-          method: 'PUT',
+          action: 'update',
           user_id: selectedUser.id,
           full_name: editUserForm.full_name,
           phone: editUserForm.phone,
@@ -158,7 +174,7 @@ const Users = () => {
     try {
       const { data, error } = await supabase.functions.invoke('manage-users', {
         body: { 
-          method: 'DELETE',
+          action: 'delete',
           user_id: userId 
         }
       });
