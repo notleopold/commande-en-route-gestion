@@ -241,10 +241,6 @@ const Orders = () => {
         payment_type: data.payment_type,
         status: data.status,
         current_transitaire: data.current_transitaire || null,
-        estimated_arrival_date: data.estimated_arrival_date || null,
-        is_arrived: data.is_arrived || false,
-        pallets_received: data.pallets_received ? parseInt(data.pallets_received) : null,
-        reception_number: data.reception_number || null,
       };
 
       const { data: insertedOrder, error } = await supabase
