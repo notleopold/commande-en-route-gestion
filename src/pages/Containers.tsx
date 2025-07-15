@@ -789,7 +789,7 @@ export default function Containers() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="max-h-64 overflow-y-auto">
-                      {availableOrders.length > 0 ? availableOrders.map((order) => {
+                      {availableOrders.map((order) => {
                         const compatibility = order.order_products ? checkOrderCompatibility(order.order_products) : { compatible: true, conflicts: [] };
                         return (
                           <div key={order.id} className="flex items-center justify-between p-2 border rounded mb-2">
