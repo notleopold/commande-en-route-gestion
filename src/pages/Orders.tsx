@@ -10,10 +10,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle, Link, CheckCircle } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle, Link, CheckCircle, Calendar, Package, Truck, X } from "lucide-react";
+import { useForm, useFieldArray } from "react-hook-form";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Product {
   id: string;
@@ -56,6 +61,10 @@ interface Order {
   total_price?: number;
   current_transitaire?: string;
   container_id?: string;
+  estimated_arrival_date?: string;
+  is_arrived?: boolean;
+  pallets_received?: number;
+  reception_number?: string;
   client?: { name: string };
 }
 
@@ -103,7 +112,18 @@ const Orders = () => {
       payment_date: "",
       payment_type: "",
       status: "",
+      current_transitaire: "",
+      estimated_arrival_date: "",
+      is_arrived: false,
+      pallets_received: "",
+      reception_number: "",
+      products: [],
     },
+  });
+
+  const { fields: productFields, append: addProduct, remove: removeProduct } = useFieldArray({
+    control: orderForm.control,
+    name: "products"
   });
 
   useEffect(() => {
@@ -201,13 +221,39 @@ const Orders = () => {
         payment_date: data.payment_date || null,
         payment_type: data.payment_type,
         status: data.status,
+        current_transitaire: data.current_transitaire || null,
+        estimated_arrival_date: data.estimated_arrival_date || null,
+        is_arrived: data.is_arrived || false,
+        pallets_received: data.pallets_received ? parseInt(data.pallets_received) : null,
+        reception_number: data.reception_number || null,
       };
 
-      const { error } = await supabase
+      const { data: insertedOrder, error } = await supabase
         .from('orders')
-        .insert([orderData]);
+        .insert([orderData])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Insert order products if any
+      if (data.products && data.products.length > 0) {
+        const orderProducts = data.products.map((product: any) => ({
+          order_id: insertedOrder.id,
+          product_id: product.product_id,
+          quantity: parseInt(product.quantity),
+          unit_price: parseFloat(product.unit_price),
+          total_price: parseFloat(product.unit_price) * parseInt(product.quantity),
+          palette_quantity: product.palette_quantity ? parseInt(product.palette_quantity) : null,
+          carton_quantity: product.carton_quantity ? parseInt(product.carton_quantity) : null,
+        }));
+
+        const { error: productsError } = await supabase
+          .from('order_products')
+          .insert(orderProducts);
+
+        if (productsError) throw productsError;
+      }
 
       toast.success("Commande créée avec succès");
       setIsNewOrderOpen(false);
@@ -340,136 +386,377 @@ const Orders = () => {
                 Nouvelle Commande
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Nouvelle Commande</DialogTitle>
               </DialogHeader>
               
               <Form {...orderForm}>
-                <form onSubmit={orderForm.handleSubmit(handleSubmitOrder)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={orderForm.control}
-                      name="client_id"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Client</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Sélectionner un client" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {clients.map(client => (
-                                <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                <form onSubmit={orderForm.handleSubmit(handleSubmitOrder)} className="space-y-6">
+                  {/* Section informations de base */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Informations générales</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={orderForm.control}
+                        name="client_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Client</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Sélectionner un client" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {clients.map(client => (
+                                  <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={orderForm.control}
+                        name="supplier"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Fournisseur</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Sélectionner un fournisseur" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {suppliers.map(supplier => (
+                                  <SelectItem key={supplier.id} value={supplier.name}>{supplier.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                     
-                    <FormField
-                      control={orderForm.control}
-                      name="supplier"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Fournisseur</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={orderForm.control}
+                        name="order_date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Date de commande</FormLabel>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Sélectionner un fournisseur" />
-                              </SelectTrigger>
+                              <Input {...field} type="date" />
                             </FormControl>
-                            <SelectContent>
-                              {suppliers.map(supplier => (
-                                <SelectItem key={supplier.id} value={supplier.name}>{supplier.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-4">
-                    <FormField
-                      control={orderForm.control}
-                      name="order_date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Date de commande</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="date" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={orderForm.control}
-                      name="payment_date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Date de paiement</FormLabel>
-                          <FormControl>
-                            <Input {...field} type="date" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={orderForm.control}
-                      name="payment_type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Type de paiement</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={orderForm.control}
+                        name="payment_date"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Date de paiement</FormLabel>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Type de paiement" />
-                              </SelectTrigger>
+                              <Input {...field} type="date" />
                             </FormControl>
-                            <SelectContent>
-                              {PAYMENT_TYPES.map(type => (
-                                <SelectItem key={type} value={type}>{type}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={orderForm.control}
+                        name="payment_type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Type de paiement</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Type de paiement" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {PAYMENT_TYPES.map(type => (
+                                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={orderForm.control}
+                        name="status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Statut</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Statut de la commande" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {ORDER_STATUSES.map(status => (
+                                  <SelectItem key={status} value={status}>{status}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={orderForm.control}
+                        name="current_transitaire"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Transitaire de livraison</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Sélectionner un transitaire" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {Array.from(new Set(containers.map(c => c.transitaire))).map(transitaire => (
+                                  <SelectItem key={transitaire} value={transitaire}>{transitaire}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={orderForm.control}
+                      name="estimated_arrival_date"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Date estimée d'arrivée chez le transitaire</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(new Date(field.value), "PPP")
+                                  ) : (
+                                    <span>Sélectionner une date</span>
+                                  )}
+                                  <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <CalendarComponent
+                                mode="single"
+                                selected={field.value ? new Date(field.value) : undefined}
+                                onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
+                                initialFocus
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
 
-                  <FormField
-                    control={orderForm.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Statut</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                  {/* Section produits */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">Produits de la commande</h3>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addProduct({ product_id: "", quantity: "1", unit_price: "0", palette_quantity: "", carton_quantity: "" })}
+                      >
+                        <Package className="h-4 w-4 mr-2" />
+                        Ajouter un produit
+                      </Button>
+                    </div>
+                    
+                    {productFields.map((field, index) => (
+                      <div key={field.id} className="p-4 border rounded-lg space-y-3">
+                        <div className="flex justify-between items-center">
+                          <h4 className="font-medium">Produit {index + 1}</h4>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeProduct(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <FormField
+                            control={orderForm.control}
+                            name={`products.${index}.product_id`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Produit</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Sélectionner un produit" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {products.map(product => (
+                                      <SelectItem key={product.id} value={product.id}>
+                                        {product.name} - {product.sku}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={orderForm.control}
+                            name={`products.${index}.quantity`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Quantité</FormLabel>
+                                <FormControl>
+                                  <Input {...field} type="number" min="1" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3">
+                          <FormField
+                            control={orderForm.control}
+                            name={`products.${index}.unit_price`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Prix unitaire (€)</FormLabel>
+                                <FormControl>
+                                  <Input {...field} type="number" min="0" step="0.01" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={orderForm.control}
+                            name={`products.${index}.palette_quantity`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Nb palettes</FormLabel>
+                                <FormControl>
+                                  <Input {...field} type="number" min="0" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={orderForm.control}
+                            name={`products.${index}.carton_quantity`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Nb cartons</FormLabel>
+                                <FormControl>
+                                  <Input {...field} type="number" min="0" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Section réception */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Informations de réception</h3>
+                    
+                    <FormField
+                      control={orderForm.control}
+                      name="is_arrived"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Statut de la commande" />
-                            </SelectTrigger>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
                           </FormControl>
-                          <SelectContent>
-                            {ORDER_STATUSES.map(status => (
-                              <SelectItem key={status} value={status}>{status}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Commande arrivée chez le transitaire
+                            </FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={orderForm.control}
+                        name="pallets_received"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nombre de palettes reçues</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="number" min="0" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={orderForm.control}
+                        name="reception_number"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Numéro de réception chez le transitaire</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Numéro de réception" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
 
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => setIsNewOrderOpen(false)}>

@@ -244,20 +244,10 @@ export default function Containers() {
   };
 
   const getCompatibleOrders = (transitaire: string) => {
-    console.log('Checking compatible orders for transitaire:', transitaire);
-    console.log('Available orders:', orders.map(o => ({
-      id: o.id,
-      order_number: o.order_number,
-      current_transitaire: o.current_transitaire,
-      container_id: o.container_id
-    })));
-    
     const transitaireOrders = orders.filter(order => 
       order.current_transitaire === transitaire && 
       !order.container_id
     );
-
-    console.log('Orders matching transitaire filter:', transitaireOrders.length);
 
     // Get currently loaded IMDG classes
     const currentImdgClasses = containerOrders
