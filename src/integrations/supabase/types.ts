@@ -575,6 +575,7 @@ export type Database = {
           dangerous: boolean | null
           description: string | null
           id: string
+          imdg_class: string | null
           layers_per_palette: number | null
           name: string
           package_dimensions_height: number | null
@@ -614,6 +615,7 @@ export type Database = {
           dangerous?: boolean | null
           description?: string | null
           id?: string
+          imdg_class?: string | null
           layers_per_palette?: number | null
           name: string
           package_dimensions_height?: number | null
@@ -653,6 +655,7 @@ export type Database = {
           dangerous?: boolean | null
           description?: string | null
           id?: string
+          imdg_class?: string | null
           layers_per_palette?: number | null
           name?: string
           package_dimensions_height?: number | null

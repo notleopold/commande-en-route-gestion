@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,22 +14,34 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   Plus, Search, Container, Package, MapPin, Calendar, Eye, Edit, Ship, 
   Weight, Ruler, AlertTriangle, Truck, Package2, Clock, CheckCircle,
-  XCircle, PlusCircle, MinusCircle, Trash2
+  XCircle, PlusCircle, MinusCircle, Trash2, Link, Unlink
 } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { checkContainerCompatibility } from "@/lib/imdg-compatibility";
+
+interface Order {
+  id: string;
+  order_number: string;
+  supplier: string;
+  status: string;
+  weight?: number;
+  volume?: number;
+  cartons?: number;
+  current_transitaire?: string;
+  container_id?: string;
+  products?: Product[];
+}
 
 interface Product {
   id: string;
   name: string;
-  quantity: string;
-  supplier: string;
-  status: 'expected' | 'received' | 'loaded';
-  location: string;
-  weight: string;
-  volume: string;
-  dangerous?: boolean;
+  dangerous: boolean;
+  imdg_class?: string;
+  carton_weight?: number;
+  carton_volume?: number;
+  cartons_per_palette?: number;
 }
 
 interface ContainerData {
@@ -45,7 +57,7 @@ interface ContainerData {
   eta: string;
   currentWeight: string;
   currentVolume: string;
-  products: Product[];
+  orders: Order[];
 }
 
 export default function Containers() {
@@ -57,6 +69,9 @@ export default function Containers() {
   const [selectedContainer, setSelectedContainer] = useState<ContainerData | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [containerToDelete, setContainerToDelete] = useState<ContainerData | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [availableOrders, setAvailableOrders] = useState<Order[]>([]);
+  const [containerOrders, setContainerOrders] = useState<Order[]>([]);
   
   const [containers] = useState<ContainerData[]>([
     {
@@ -72,9 +87,18 @@ export default function Containers() {
       eta: "2024-02-15",
       currentWeight: "18.5t",
       currentVolume: "22m³",
-      products: [
-        { id: "P001", name: "Bobines 450", quantity: "12 palettes", supplier: "Sofidel", status: "loaded", location: "SIFA", weight: "8.2t", volume: "12m³" },
-        { id: "P002", name: "Emballages carton", quantity: "45 unités", supplier: "Smurfit", status: "loaded", location: "SIFA", weight: "10.3t", volume: "10m³" }
+      orders: [
+        { 
+          id: "ORDER-001", 
+          order_number: "CMD-001", 
+          supplier: "Sofidel", 
+          status: "LIVRÉ", 
+          weight: 8200, 
+          volume: 12, 
+          cartons: 150,
+          current_transitaire: "SIFA",
+          container_id: "CONT-001"
+        }
       ]
     },
     {
@@ -90,7 +114,7 @@ export default function Containers() {
       eta: "2024-02-20",
       currentWeight: "0t",
       currentVolume: "0m³",
-      products: []
+      orders: []
     },
     {
       id: "CONT-003",
@@ -105,21 +129,48 @@ export default function Containers() {
       eta: "2024-02-12",
       currentWeight: "23.8t",
       currentVolume: "26m³",
-      products: [
-        { id: "P003", name: "Produits chimiques", quantity: "8 fûts", supplier: "ChemCorp", status: "loaded", location: "CEVA", weight: "15.5t", volume: "18m³", dangerous: true },
-        { id: "P004", name: "Machines industrielles", quantity: "2 unités", supplier: "TechPro", status: "loaded", location: "CEVA", weight: "8.3t", volume: "8m³" }
+      orders: [
+        { 
+          id: "ORDER-002", 
+          order_number: "CMD-002", 
+          supplier: "ChemCorp", 
+          status: "LIVRÉ", 
+          weight: 15500, 
+          volume: 18, 
+          cartons: 80,
+          current_transitaire: "CEVA",
+          container_id: "CONT-003"
+        }
       ]
     }
   ]);
 
-  const [availableProducts] = useState<Product[]>([
-    { id: "P005", name: "Tubes PVC", quantity: "25 unités", supplier: "PlasticCorp", status: "received", location: "SIFA", weight: "5.2t", volume: "8m³" },
-    { id: "P006", name: "Matériel électrique", quantity: "15 colis", supplier: "ElecTech", status: "received", location: "TAF", weight: "3.1t", volume: "4m³" },
-    { id: "P007", name: "Produits dangereux", quantity: "6 containers", supplier: "DangerCorp", status: "received", location: "CEVA", weight: "12t", volume: "15m³", dangerous: true },
-    { id: "P008", name: "Textile", quantity: "30 balles", supplier: "TextilePro", status: "expected", location: "SIFA", weight: "8t", volume: "12m³" }
-  ]);
-
   const transitaires = ["SIFA", "TAF", "CEVA"];
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_products (
+            *,
+            products (*)
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast.error("Erreur lors du chargement des commandes");
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const styles = {
@@ -131,13 +182,18 @@ export default function Containers() {
     return <Badge className={styles[status] || ""}>{status}</Badge>;
   };
 
-  const getProductStatusBadge = (status: string) => {
+  const getOrderStatusBadge = (status: string) => {
     const styles = {
-      "expected": "bg-yellow-100 text-yellow-800",
-      "received": "bg-blue-100 text-blue-800",
-      "loaded": "bg-green-100 text-green-800"
+      "BDC ENVOYÉ ZIKETRO": "bg-blue-100 text-blue-800",
+      "À COMMANDER": "bg-orange-100 text-orange-800",
+      "PAIEMENT EN ATTENTE": "bg-yellow-100 text-yellow-800",
+      "COMMANDÉ > EN LIVRAISON": "bg-purple-100 text-purple-800",
+      "PAYÉ (30%)": "bg-green-100 text-green-600",
+      "PAYÉ (50%)": "bg-green-100 text-green-700",
+      "PAYÉ (100%)": "bg-green-100 text-green-800",
+      "LIVRÉ": "bg-green-100 text-green-900"
     };
-    return <Badge className={styles[status] || ""}>{status}</Badge>;
+    return <Badge className={styles[status] || "bg-gray-100 text-gray-800"}>{status}</Badge>;
   };
 
   const getTypeIcon = (type: string) => {
@@ -170,19 +226,85 @@ export default function Containers() {
 
   const handleLoadingPlan = (container: ContainerData) => {
     setSelectedContainer(container);
+    // Get available orders that match this container's transitaire and are not already assigned
+    const available = orders.filter(order => 
+      order.current_transitaire === container.transitaire && 
+      !order.container_id
+    );
+    setAvailableOrders(available);
+    
+    // Get orders already assigned to this container
+    const assigned = orders.filter(order => order.container_id === container.id);
+    setContainerOrders(assigned);
+    
     setIsLoadingPlanOpen(true);
   };
 
-  const getCompatibleProducts = (transitaire: string) => {
-    return availableProducts.filter(product => 
-      product.status === 'received' && product.location === transitaire
+  const getCompatibleOrders = (transitaire: string) => {
+    return orders.filter(order => 
+      order.current_transitaire === transitaire && 
+      !order.container_id
     );
   };
 
-  const getIncompatibleProducts = (transitaire: string) => {
-    return availableProducts.filter(product => 
-      product.status === 'received' && product.location !== transitaire
+  const getIncompatibleOrders = (transitaire: string) => {
+    return orders.filter(order => 
+      order.current_transitaire && 
+      order.current_transitaire !== transitaire && 
+      !order.container_id
     );
+  };
+
+  const handleLinkOrderToContainer = async (orderId: string, containerId: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ container_id: containerId })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast.success("Commande liée au conteneur avec succès");
+      fetchOrders();
+      
+      // Refresh the loading plan
+      if (selectedContainer) {
+        handleLoadingPlan(selectedContainer);
+      }
+    } catch (error) {
+      console.error('Error linking order to container:', error);
+      toast.error("Erreur lors de la liaison");
+    }
+  };
+
+  const handleUnlinkOrderFromContainer = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ container_id: null })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast.success("Commande déliée du conteneur avec succès");
+      fetchOrders();
+      
+      // Refresh the loading plan
+      if (selectedContainer) {
+        handleLoadingPlan(selectedContainer);
+      }
+    } catch (error) {
+      console.error('Error unlinking order from container:', error);
+      toast.error("Erreur lors de la déliaison");
+    }
+  };
+
+  const checkOrderCompatibility = (orderProducts: any[]): { compatible: boolean; conflicts: any[] } => {
+    const imdgClasses = orderProducts
+      .flatMap(op => op.products?.imdg_class ? [op.products.imdg_class] : [])
+      .filter(Boolean);
+    
+    return checkContainerCompatibility(imdgClasses);
   };
 
   const handleDeleteContainer = (container: ContainerData) => {
@@ -519,41 +641,36 @@ export default function Containers() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-sm">Produits Chargés ({selectedContainer.products.length})</CardTitle>
+                    <CardTitle className="text-sm">Commandes Chargées ({selectedContainer.orders.length})</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {selectedContainer.products.length > 0 ? (
+                    {selectedContainer.orders.length > 0 ? (
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Produit</TableHead>
-                            <TableHead>Quantité</TableHead>
+                            <TableHead>Commande</TableHead>
                             <TableHead>Fournisseur</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Poids</TableHead>
                             <TableHead>Volume</TableHead>
+                            <TableHead>Cartons</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {selectedContainer.products.map((product) => (
-                            <TableRow key={product.id}>
-                              <TableCell>
-                                <div className="flex items-center space-x-2">
-                                  {product.dangerous && <AlertTriangle className="h-4 w-4 text-red-500" />}
-                                  <span>{product.name}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>{product.quantity}</TableCell>
-                              <TableCell>{product.supplier}</TableCell>
-                              <TableCell>{getProductStatusBadge(product.status)}</TableCell>
-                              <TableCell>{product.weight}</TableCell>
-                              <TableCell>{product.volume}</TableCell>
+                          {selectedContainer.orders.map((order) => (
+                            <TableRow key={order.id}>
+                              <TableCell className="font-medium">{order.order_number}</TableCell>
+                              <TableCell>{order.supplier}</TableCell>
+                              <TableCell>{getOrderStatusBadge(order.status)}</TableCell>
+                              <TableCell>{order.weight ? `${order.weight/1000}t` : '-'}</TableCell>
+                              <TableCell>{order.volume ? `${order.volume}m³` : '-'}</TableCell>
+                              <TableCell>{order.cartons || '-'}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
                     ) : (
-                      <p className="text-muted-foreground text-center py-4">Aucun produit chargé</p>
+                      <p className="text-muted-foreground text-center py-4">Aucune commande chargée</p>
                     )}
                   </CardContent>
                 </Card>
@@ -571,50 +688,68 @@ export default function Containers() {
             {selectedContainer && (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
-                  {/* Compatible Products */}
+                  {/* Compatible Orders */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-sm text-green-700">
-                        Produits Compatibles ({selectedContainer.transitaire})
+                        Commandes Compatibles ({selectedContainer.transitaire})
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="max-h-64 overflow-y-auto">
-                      {getCompatibleProducts(selectedContainer.transitaire).map((product) => (
-                        <div key={product.id} className="flex items-center justify-between p-2 border rounded mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2">
-                              {product.dangerous && <AlertTriangle className="h-4 w-4 text-red-500" />}
-                              <span className="font-medium">{product.name}</span>
+                      {availableOrders.map((order) => {
+                        const compatibility = order.products ? checkOrderCompatibility(order.products) : { compatible: true, conflicts: [] };
+                        return (
+                          <div key={order.id} className="flex items-center justify-between p-2 border rounded mb-2">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2">
+                                {!compatibility.compatible && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                                <span className="font-medium">{order.order_number}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {order.supplier} - {order.weight ? `${order.weight/1000}t` : 'N/A'} - {order.volume ? `${order.volume}m³` : 'N/A'}
+                              </div>
+                              {!compatibility.compatible && (
+                                <div className="text-xs text-red-600">
+                                  ⚠️ Incompatibilités IMDG détectées
+                                </div>
+                              )}
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {product.quantity} - {product.supplier} - {product.weight} - {product.volume}
-                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleLinkOrderToContainer(order.id, selectedContainer.id)}
+                              disabled={!compatibility.compatible}
+                            >
+                              <Link className="h-3 w-3" />
+                            </Button>
                           </div>
-                          <Button size="sm" variant="outline">
-                            <PlusCircle className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
+                        );
+                      })}
+                      {availableOrders.length === 0 && (
+                        <p className="text-muted-foreground text-center py-4">
+                          Aucune commande compatible disponible
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
 
-                  {/* Incompatible Products */}
+                  {/* Incompatible Orders */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-sm text-red-700">
-                        Produits Incompatibles (Autres transitaires)
+                        Commandes Incompatibles (Autres transitaires)
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="max-h-64 overflow-y-auto">
-                      {getIncompatibleProducts(selectedContainer.transitaire).map((product) => (
-                        <div key={product.id} className="flex items-center justify-between p-2 border rounded mb-2 bg-red-50">
+                      {getIncompatibleOrders(selectedContainer.transitaire).map((order) => (
+                        <div key={order.id} className="flex items-center justify-between p-2 border rounded mb-2 bg-red-50">
                           <div className="flex-1">
                             <div className="flex items-center space-x-2">
                               <XCircle className="h-4 w-4 text-red-500" />
-                              <span className="font-medium text-red-700">{product.name}</span>
+                              <span className="font-medium text-red-700">{order.order_number}</span>
                             </div>
                             <div className="text-xs text-red-600">
-                              {product.quantity} - {product.supplier} - Stocké chez {product.location}
+                              {order.supplier} - Transitaire: {order.current_transitaire}
                             </div>
                           </div>
                           <Alert className="ml-2">
@@ -636,19 +771,28 @@ export default function Containers() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      {selectedContainer.products.map((product) => (
-                        <div key={product.id} className="flex items-center justify-between p-2 border rounded bg-green-50">
+                      {containerOrders.map((order) => (
+                        <div key={order.id} className="flex items-center justify-between p-2 border rounded bg-green-50">
                           <div className="flex items-center space-x-2">
                             <CheckCircle className="h-4 w-4 text-green-500" />
-                            {product.dangerous && <AlertTriangle className="h-4 w-4 text-red-500" />}
-                            <span className="font-medium">{product.name}</span>
-                            <span className="text-sm text-muted-foreground">- {product.quantity}</span>
+                            <span className="font-medium">{order.order_number}</span>
+                            <span className="text-sm text-muted-foreground">- {order.supplier}</span>
                           </div>
-                          <Button size="sm" variant="outline">
-                            <MinusCircle className="h-3 w-3" />
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleUnlinkOrderFromContainer(order.id)}
+                          >
+                            <Unlink className="h-3 w-3" />
                           </Button>
                         </div>
                       ))}
+                      
+                      {containerOrders.length === 0 && (
+                        <p className="text-muted-foreground text-center py-4">
+                          Aucune commande chargée
+                        </p>
+                      )}
                     </div>
 
                     <div className="mt-4 p-4 bg-gray-50 rounded">

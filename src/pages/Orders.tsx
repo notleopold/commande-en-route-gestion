@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle, Link } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle, Link, CheckCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -256,18 +256,23 @@ const Orders = () => {
     try {
       const { error } = await supabase
         .from('orders')
-        .update({ container_id: containerId })
+        .update({ container_id: containerId || null })
         .eq('id', orderToLink.id);
 
       if (error) throw error;
 
-      toast.success("Commande liée au conteneur avec succès");
+      if (containerId) {
+        toast.success("Commande liée au conteneur avec succès");
+      } else {
+        toast.success("Commande déliée du conteneur avec succès");
+      }
+      
       setIsLinkContainerOpen(false);
       setOrderToLink(null);
       fetchOrders();
     } catch (error) {
-      console.error('Error linking order to container:', error);
-      toast.error("Erreur lors de la liaison au conteneur");
+      console.error('Error linking/unlinking order to container:', error);
+      toast.error("Erreur lors de la liaison/déliaison du conteneur");
     }
   };
 

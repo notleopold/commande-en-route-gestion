@@ -23,6 +23,7 @@ interface Product {
   category: string;
   sku: string;
   dangerous: boolean;
+  imdg_class?: string;
   unit: string;
   cost: number;
   suppliers: string[];
@@ -58,6 +59,11 @@ interface Product {
 
 const categories = ["Informatique", "Chimie", "Mécanique", "Électronique", "Mobilier"];
 const units = ["pièce", "kg", "litre", "mètre", "boîte"];
+const imdgClasses = [
+  "Classe 1", "Classe 2.1", "Classe 2.2", "Classe 2.3", "Classe 3", 
+  "Classe 4.1", "Classe 4.2", "Classe 4.3", "Classe 5.1", "Classe 5.2", 
+  "Classe 6.1", "Classe 6.2", "Classe 7", "Classe 8", "Classe 9"
+];
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -76,6 +82,7 @@ export default function Products() {
       category: "",
       sku: "",
       dangerous: false,
+      imdg_class: "",
       unit: "",
       cost: "",
       suppliers: "",
@@ -154,6 +161,7 @@ export default function Products() {
       category: product.category,
       sku: product.sku,
       dangerous: product.dangerous,
+      imdg_class: product.imdg_class || "",
       unit: product.unit,
       cost: product.cost.toString(),
       suppliers: product.suppliers.join(", "),
@@ -252,6 +260,7 @@ export default function Products() {
         category: data.category,
         sku: data.sku,
         dangerous: data.dangerous,
+        imdg_class: data.dangerous && data.imdg_class ? data.imdg_class : null,
         unit: data.unit,
         cost: parseFloat(data.cost),
         suppliers: data.suppliers.split(",").map((s: string) => s.trim()),
@@ -535,6 +544,31 @@ export default function Products() {
                           )}
                         />
                       </div>
+                      
+                      {form.watch("dangerous") && (
+                        <FormField
+                          control={form.control}
+                          name="imdg_class"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Classe IMDG</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner une classe IMDG" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {imdgClasses.map(imdgClass => (
+                                    <SelectItem key={imdgClass} value={imdgClass}>{imdgClass}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                       
                       <FormField
                         control={form.control}
@@ -1002,10 +1036,17 @@ export default function Products() {
                         <div>
                           <div className="font-medium">{product.name}</div>
                           {product.dangerous && (
-                            <Badge variant="destructive" className="text-xs">
-                              <AlertTriangle className="mr-1 h-3 w-3" />
-                              Dangereux
-                            </Badge>
+                            <div className="flex gap-1">
+                              <Badge variant="destructive" className="text-xs">
+                                <AlertTriangle className="mr-1 h-3 w-3" />
+                                Dangereux
+                              </Badge>
+                              {product.imdg_class && (
+                                <Badge variant="outline" className="text-xs">
+                                  {product.imdg_class}
+                                </Badge>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
