@@ -315,6 +315,50 @@ export default function Containers() {
     setDeleteDialogOpen(true);
   };
 
+  const calculateTotalWeight = () => {
+    return containerOrders.reduce((total, order) => total + (order.weight || 0), 0);
+  };
+
+  const calculateTotalVolume = () => {
+    return containerOrders.reduce((total, order) => total + (order.volume || 0), 0);
+  };
+
+  const calculateTotalValue = () => {
+    return containerOrders.reduce((total, order) => total + (order.total_price || 0), 0);
+  };
+
+  const calculateTotalPalettes = () => {
+    return containerOrders.reduce((total, order) => {
+      if (!order.order_products) return total;
+      return total + order.order_products.reduce((orderTotal, op) => {
+        const cartons = op.products?.cartons_per_palette || 1;
+        const orderCartons = order.cartons || 0;
+        return orderTotal + Math.ceil(orderCartons / cartons);
+      }, 0);
+    }, 0);
+  };
+
+  const getContainerCapacity = (type: string) => {
+    if (type === "40ft") {
+      return { maxWeight: 30000, maxVolume: 67, maxPalettes: 58 };
+    }
+    return { maxWeight: 24000, maxVolume: 28, maxPalettes: 33 };
+  };
+
+  const getCapacityColor = (current: number, max: number, isValue = false) => {
+    const percentage = (current / max) * 100;
+    
+    if (isValue) {
+      const threshold = selectedContainer?.type === "40ft" ? 60000 : 45000;
+      return current >= threshold ? "text-green-600" : "text-red-600";
+    }
+    
+    if (current > max) return "text-red-600";
+    if (percentage < 60) return "text-orange-600";
+    if (percentage >= 60 && percentage <= 80) return "text-green-600";
+    return "text-yellow-600";
+  };
+
   const confirmDeleteContainer = async () => {
     if (!containerToDelete) return;
 
@@ -508,7 +552,7 @@ export default function Containers() {
               </TableHeader>
               <TableBody>
                 {filteredContainers.map((container) => (
-                  <TableRow key={container.id}>
+                  <TableRow key={container.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewContainer(container)}>
                     <TableCell className="font-medium">{container.id}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
@@ -801,14 +845,50 @@ export default function Containers() {
                     <div className="mt-4 p-4 bg-gray-50 rounded">
                       <h4 className="font-medium mb-2">Résumé du Chargement</h4>
                       <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span>Poids Total: {selectedContainer.currentWeight} / {selectedContainer.maxWeight}</span>
-                          <Progress value={calculateFillPercentage(selectedContainer.currentWeight, selectedContainer.maxWeight, 'weight')} className="mt-1" />
-                        </div>
-                        <div>
-                          <span>Volume Total: {selectedContainer.currentVolume} / {selectedContainer.maxVolume}</span>
-                          <Progress value={calculateFillPercentage(selectedContainer.currentVolume, selectedContainer.maxVolume, 'volume')} className="mt-1" />
-                        </div>
+                        {(() => {
+                          const totalWeight = calculateTotalWeight();
+                          const totalVolume = calculateTotalVolume();
+                          const totalValue = calculateTotalValue();
+                          const totalPalettes = calculateTotalPalettes();
+                          const capacity = getContainerCapacity(selectedContainer.type);
+                          
+                          return (
+                            <>
+                              <div>
+                                <span className={getCapacityColor(totalWeight, capacity.maxWeight)}>
+                                  Poids embarqué: {(totalWeight/1000).toFixed(1)}t / {capacity.maxWeight/1000}t
+                                </span>
+                                <Progress 
+                                  value={Math.min((totalWeight / capacity.maxWeight) * 100, 100)} 
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <span className={getCapacityColor(totalVolume, capacity.maxVolume)}>
+                                  Volume embarqué: {totalVolume}m³ / {capacity.maxVolume}m³
+                                </span>
+                                <Progress 
+                                  value={Math.min((totalVolume / capacity.maxVolume) * 100, 100)} 
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <span className={getCapacityColor(totalValue, 0, true)}>
+                                  Valeur de la marchandise: {totalValue.toLocaleString()}€
+                                </span>
+                              </div>
+                              <div>
+                                <span className={getCapacityColor(totalPalettes, capacity.maxPalettes)}>
+                                  Nombre de palettes embarquées: {totalPalettes} / {capacity.maxPalettes}
+                                </span>
+                                <Progress 
+                                  value={Math.min((totalPalettes / capacity.maxPalettes) * 100, 100)} 
+                                  className="mt-1"
+                                />
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   </CardContent>
