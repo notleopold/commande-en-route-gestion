@@ -78,6 +78,30 @@ export default function Containers() {
   const [containerOrders, setContainerOrders] = useState<Order[]>([]);
   const [containers, setContainers] = useState<ContainerData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newContainerForm, setNewContainerForm] = useState({
+    number: '',
+    type: '',
+    transitaire: '',
+    status: '',
+    etd: '',
+    eta: '',
+    max_weight: 24000,
+    max_volume: 28,
+    max_pallets: 33,
+    dangerous_goods: false
+  });
+  const [editContainerForm, setEditContainerForm] = useState({
+    number: '',
+    type: '',
+    transitaire: '',
+    status: '',
+    etd: '',
+    eta: '',
+    max_weight: 24000,
+    max_volume: 28,
+    max_pallets: 33,
+    dangerous_goods: false
+  });
   
   useEffect(() => {
     fetchContainers();
@@ -135,6 +159,18 @@ export default function Containers() {
       event.stopPropagation();
     }
     setSelectedContainer(container);
+    setEditContainerForm({
+      number: container.number,
+      type: container.type,
+      transitaire: container.transitaire,
+      status: container.status,
+      etd: container.etd || '',
+      eta: container.eta || '',
+      max_weight: container.max_weight,
+      max_volume: container.max_volume,
+      max_pallets: container.max_pallets,
+      dangerous_goods: container.dangerous_goods
+    });
     setIsEditContainerOpen(true);
   };
 
@@ -299,6 +335,93 @@ export default function Containers() {
     return "text-yellow-600";
   };
 
+  const handleSaveNewContainer = async () => {
+    try {
+      // Set capacity based on container type
+      let maxWeight = 24000, maxVolume = 28, maxPallets = 33;
+      if (newContainerForm.type === "40ft" || newContainerForm.type === "40") {
+        maxWeight = 30000;
+        maxVolume = 67;
+        maxPallets = 58;
+      }
+
+      const { error } = await supabase
+        .from('containers')
+        .insert({
+          number: newContainerForm.number,
+          type: newContainerForm.type,
+          transitaire: newContainerForm.transitaire,
+          status: newContainerForm.status,
+          etd: newContainerForm.etd || null,
+          eta: newContainerForm.eta || null,
+          max_weight: maxWeight,
+          max_volume: maxVolume,
+          max_pallets: maxPallets,
+          dangerous_goods: newContainerForm.dangerous_goods
+        });
+
+      if (error) throw error;
+
+      toast.success("Conteneur créé avec succès");
+      setIsNewContainerOpen(false);
+      setNewContainerForm({
+        number: '',
+        type: '',
+        transitaire: '',
+        status: '',
+        etd: '',
+        eta: '',
+        max_weight: 24000,
+        max_volume: 28,
+        max_pallets: 33,
+        dangerous_goods: false
+      });
+      fetchContainers();
+    } catch (error) {
+      console.error('Error creating container:', error);
+      toast.error("Erreur lors de la création du conteneur");
+    }
+  };
+
+  const handleSaveEditContainer = async () => {
+    if (!selectedContainer) return;
+
+    try {
+      // Set capacity based on container type
+      let maxWeight = 24000, maxVolume = 28, maxPallets = 33;
+      if (editContainerForm.type === "40ft" || editContainerForm.type === "40") {
+        maxWeight = 30000;
+        maxVolume = 67;
+        maxPallets = 58;
+      }
+
+      const { error } = await supabase
+        .from('containers')
+        .update({
+          number: editContainerForm.number,
+          type: editContainerForm.type,
+          transitaire: editContainerForm.transitaire,
+          status: editContainerForm.status,
+          etd: editContainerForm.etd || null,
+          eta: editContainerForm.eta || null,
+          max_weight: maxWeight,
+          max_volume: maxVolume,
+          max_pallets: maxPallets,
+          dangerous_goods: editContainerForm.dangerous_goods
+        })
+        .eq('id', selectedContainer.id);
+
+      if (error) throw error;
+
+      toast.success("Conteneur modifié avec succès");
+      setIsEditContainerOpen(false);
+      fetchContainers();
+    } catch (error) {
+      console.error('Error updating container:', error);
+      toast.error("Erreur lors de la modification du conteneur");
+    }
+  };
+
   const confirmDeleteContainer = async () => {
     if (!containerToDelete) return;
 
@@ -378,11 +501,16 @@ export default function Containers() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="number">Numéro de conteneur</Label>
-                    <Input id="number" placeholder="CONT-001" />
+                    <Input 
+                      id="number" 
+                      placeholder="CONT-001" 
+                      value={newContainerForm.number}
+                      onChange={(e) => setNewContainerForm(prev => ({ ...prev, number: e.target.value }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="type">Type</Label>
-                    <Select>
+                    <Select value={newContainerForm.type} onValueChange={(value) => setNewContainerForm(prev => ({ ...prev, type: value }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner le type" />
                       </SelectTrigger>
@@ -397,7 +525,7 @@ export default function Containers() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="transitaire">Transitaire</Label>
-                    <Select>
+                    <Select value={newContainerForm.transitaire} onValueChange={(value) => setNewContainerForm(prev => ({ ...prev, transitaire: value }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner le transitaire" />
                       </SelectTrigger>
@@ -410,7 +538,7 @@ export default function Containers() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="status">Status</Label>
-                    <Select>
+                    <Select value={newContainerForm.status} onValueChange={(value) => setNewContainerForm(prev => ({ ...prev, status: value }))}>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner le status" />
                       </SelectTrigger>
@@ -427,12 +555,34 @@ export default function Containers() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="etd">Date de départ (ETD)</Label>
-                    <Input id="etd" type="date" />
+                    <Input 
+                      id="etd" 
+                      type="date" 
+                      value={newContainerForm.etd}
+                      onChange={(e) => setNewContainerForm(prev => ({ ...prev, etd: e.target.value }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="eta">Date d'arrivée (ETA)</Label>
-                    <Input id="eta" type="date" />
+                    <Input 
+                      id="eta" 
+                      type="date" 
+                      value={newContainerForm.eta}
+                      onChange={(e) => setNewContainerForm(prev => ({ ...prev, eta: e.target.value }))}
+                    />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>
+                    <input
+                      type="checkbox"
+                      checked={newContainerForm.dangerous_goods}
+                      onChange={(e) => setNewContainerForm(prev => ({ ...prev, dangerous_goods: e.target.checked }))}
+                      className="mr-2"
+                    />
+                    Accepte les marchandises dangereuses
+                  </Label>
                 </div>
               </div>
               
@@ -440,7 +590,7 @@ export default function Containers() {
                 <Button variant="outline" onClick={() => setIsNewContainerOpen(false)}>
                   Annuler
                 </Button>
-                <Button>Réserver</Button>
+                <Button onClick={handleSaveNewContainer}>Réserver</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -553,6 +703,110 @@ export default function Containers() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Edit Container Modal */}
+        <Dialog open={isEditContainerOpen} onOpenChange={setIsEditContainerOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Modifier le Conteneur - {selectedContainer?.number}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-number">Numéro de conteneur</Label>
+                  <Input 
+                    id="edit-number" 
+                    placeholder="CONT-001" 
+                    value={editContainerForm.number}
+                    onChange={(e) => setEditContainerForm(prev => ({ ...prev, number: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-type">Type</Label>
+                  <Select value={editContainerForm.type} onValueChange={(value) => setEditContainerForm(prev => ({ ...prev, type: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner le type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="20ft">20ft</SelectItem>
+                      <SelectItem value="40ft">40ft</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-transitaire">Transitaire</Label>
+                  <Select value={editContainerForm.transitaire} onValueChange={(value) => setEditContainerForm(prev => ({ ...prev, transitaire: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner le transitaire" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SIFA">SIFA</SelectItem>
+                      <SelectItem value="TAF">TAF</SelectItem>
+                      <SelectItem value="TLF">TLF</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-status">Status</Label>
+                  <Select value={editContainerForm.status} onValueChange={(value) => setEditContainerForm(prev => ({ ...prev, status: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner le status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="planning">En planification</SelectItem>
+                      <SelectItem value="loading">En chargement</SelectItem>
+                      <SelectItem value="transit">En transit</SelectItem>
+                      <SelectItem value="delivered">Livré</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-etd">Date de départ (ETD)</Label>
+                  <Input 
+                    id="edit-etd" 
+                    type="date" 
+                    value={editContainerForm.etd}
+                    onChange={(e) => setEditContainerForm(prev => ({ ...prev, etd: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-eta">Date d'arrivée (ETA)</Label>
+                  <Input 
+                    id="edit-eta" 
+                    type="date" 
+                    value={editContainerForm.eta}
+                    onChange={(e) => setEditContainerForm(prev => ({ ...prev, eta: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  <input
+                    type="checkbox"
+                    checked={editContainerForm.dangerous_goods}
+                    onChange={(e) => setEditContainerForm(prev => ({ ...prev, dangerous_goods: e.target.checked }))}
+                    className="mr-2"
+                  />
+                  Accepte les marchandises dangereuses
+                </Label>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsEditContainerOpen(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleSaveEditContainer}>Modifier</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* View Container Modal */}
         <Dialog open={isViewContainerOpen} onOpenChange={setIsViewContainerOpen}>
