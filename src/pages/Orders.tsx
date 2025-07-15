@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle, Link } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +53,8 @@ interface Order {
   payment_type: string;
   status: string;
   total_price?: number;
+  current_transitaire?: string;
+  container_id?: string;
   client?: { name: string };
 }
 
@@ -88,6 +90,8 @@ const Orders = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [isLinkContainerOpen, setIsLinkContainerOpen] = useState(false);
+  const [orderToLink, setOrderToLink] = useState<Order | null>(null);
 
   const orderForm = useForm({
     defaultValues: {
@@ -239,6 +243,38 @@ const Orders = () => {
   const openDeleteDialog = (order: Order) => {
     setOrderToDelete(order);
     setIsDeleteDialogOpen(true);
+  };
+
+  const openLinkContainerDialog = (order: Order) => {
+    setOrderToLink(order);
+    setIsLinkContainerOpen(true);
+  };
+
+  const handleLinkToContainer = async (containerId: string) => {
+    if (!orderToLink) return;
+
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ container_id: containerId })
+        .eq('id', orderToLink.id);
+
+      if (error) throw error;
+
+      toast.success("Commande liée au conteneur avec succès");
+      setIsLinkContainerOpen(false);
+      setOrderToLink(null);
+      fetchOrders();
+    } catch (error) {
+      console.error('Error linking order to container:', error);
+      toast.error("Erreur lors de la liaison au conteneur");
+    }
+  };
+
+  // Get containers that match the order's transitaire
+  const getCompatibleContainers = (order: Order) => {
+    if (!order.current_transitaire) return [];
+    return containers.filter(container => container.transitaire === order.current_transitaire);
   };
 
   const getStatusBadge = (status: string) => {
@@ -503,6 +539,16 @@ const Orders = () => {
                         <Button size="sm" variant="outline">
                           <Edit className="h-4 w-4" />
                         </Button>
+                        {order.current_transitaire && getCompatibleContainers(order).length > 0 && !order.container_id && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => openLinkContainerDialog(order)}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          >
+                            <Link className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button 
                           size="sm" 
                           variant="outline" 
@@ -565,6 +611,49 @@ const Orders = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Link to Container Dialog */}
+        <Dialog open={isLinkContainerOpen} onOpenChange={setIsLinkContainerOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Lier au conteneur</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Commande: <span className="font-medium">{orderToLink?.order_number}</span>
+                <br />
+                Transitaire: <span className="font-medium">{orderToLink?.current_transitaire}</span>
+              </p>
+              
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Conteneurs compatibles:</p>
+                {orderToLink && getCompatibleContainers(orderToLink).map(container => (
+                  <div key={container.id} className="p-3 border rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium">{container.number}</p>
+                        <p className="text-sm text-muted-foreground">{container.type}</p>
+                      </div>
+                      <Button 
+                        size="sm"
+                        onClick={() => handleLinkToContainer(container.id)}
+                      >
+                        Lier
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                
+                {orderToLink && getCompatibleContainers(orderToLink).length === 0 && (
+                  <p className="text-sm text-muted-foreground italic">
+                    Aucun conteneur avec le même transitaire trouvé.
+                  </p>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
