@@ -66,6 +66,21 @@ interface Order {
   pallets_received?: number;
   reception_number?: string;
   client?: { name: string };
+  order_products?: Array<{
+    id: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+    palette_quantity?: number;
+    carton_quantity?: number;
+    products?: {
+      name: string;
+      sku: string;
+      category: string;
+      dangerous?: boolean;
+      imdg_class?: string;
+    };
+  }>;
 }
 
 const ORDER_STATUSES = [
@@ -140,7 +155,11 @@ const Orders = () => {
         .from('orders')
         .select(`
           *,
-          client:clients(name)
+          client:clients(name),
+          order_products(
+            *,
+            products(name, sku, category, dangerous, imdg_class)
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -811,6 +830,8 @@ const Orders = () => {
                   <TableHead>Client</TableHead>
                   <TableHead>Fournisseur</TableHead>
                   <TableHead>Date de commande</TableHead>
+                  <TableHead>Transitaire</TableHead>
+                  <TableHead>Produits</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Actions</TableHead>
@@ -827,8 +848,35 @@ const Orders = () => {
                     <TableCell>{order.client?.name || "-"}</TableCell>
                     <TableCell>{order.supplier}</TableCell>
                     <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
+                    <TableCell>{order.current_transitaire || "-"}</TableCell>
+                    <TableCell>
+                      {order.order_products && order.order_products.length > 0 ? (
+                        <div className="space-y-1">
+                          {order.order_products.slice(0, 2).map((op, idx) => (
+                            <div key={idx} className="text-xs">
+                              {op.products?.name} x{op.quantity}
+                              {op.products?.dangerous && (
+                                <span className="ml-1 text-red-600">⚠️</span>
+                              )}
+                            </div>
+                          ))}
+                          {order.order_products.length > 2 && (
+                            <div className="text-xs text-muted-foreground">
+                              +{order.order_products.length - 2} autres
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">Aucun produit</span>
+                      )}
+                    </TableCell>
                     <TableCell>{getStatusBadge(order.status)}</TableCell>
-                    <TableCell>{order.total_price?.toFixed(2) || "-"} €</TableCell>
+                    <TableCell>
+                      {order.order_products && order.order_products.length > 0 
+                        ? order.order_products.reduce((sum, op) => sum + op.total_price, 0).toFixed(2) + " €"
+                        : order.total_price?.toFixed(2) + " €" || "-"
+                      }
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline">
