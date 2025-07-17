@@ -191,14 +191,14 @@ export default function OrderEdit() {
                 <div>
                   <Label htmlFor="client_id">Client</Label>
                   <Select 
-                    value={formData.client_id || ""} 
-                    onValueChange={(value) => handleInputChange('client_id', value)}
+                    value={formData.client_id || "none"} 
+                    onValueChange={(value) => handleInputChange('client_id', value === "none" ? null : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner un client" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Aucun client</SelectItem>
+                      <SelectItem value="none">Aucun client</SelectItem>
                       {clients.map(client => (
                         <SelectItem key={client.id} value={client.id}>
                           {client.name}
@@ -240,8 +240,8 @@ export default function OrderEdit() {
                 <div>
                   <Label htmlFor="status">Statut</Label>
                   <Select 
-                    value={formData.status || ""} 
-                    onValueChange={(value) => handleInputChange('status', value)}
+                    value={formData.status || "none"} 
+                    onValueChange={(value) => handleInputChange('status', value === "none" ? null : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner un statut" />
@@ -259,8 +259,8 @@ export default function OrderEdit() {
                 <div>
                   <Label htmlFor="payment_type">Type de paiement</Label>
                   <Select 
-                    value={formData.payment_type || ""} 
-                    onValueChange={(value) => handleInputChange('payment_type', value)}
+                    value={formData.payment_type || "none"} 
+                    onValueChange={(value) => handleInputChange('payment_type', value === "none" ? null : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Type de paiement" />
@@ -286,14 +286,14 @@ export default function OrderEdit() {
                 <div>
                   <Label htmlFor="current_transitaire">Transitaire de livraison</Label>
                   <Select 
-                    value={formData.current_transitaire || ""} 
-                    onValueChange={(value) => handleInputChange('current_transitaire', value)}
+                    value={formData.current_transitaire || "none"} 
+                    onValueChange={(value) => handleInputChange('current_transitaire', value === "none" ? null : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner un transitaire" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Aucun transitaire</SelectItem>
+                      <SelectItem value="none">Aucun transitaire</SelectItem>
                       {TRANSITAIRES.map(transitaire => (
                         <SelectItem key={transitaire} value={transitaire}>
                           {transitaire}
