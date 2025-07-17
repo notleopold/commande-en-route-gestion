@@ -425,6 +425,7 @@ export type Database = {
           created_at: string
           current_transitaire: string | null
           id: string
+          is_received: boolean | null
           order_date: string
           order_number: string
           packaging: string | null
@@ -434,6 +435,7 @@ export type Database = {
           supplier: string
           total_price: number | null
           transitaire_entry: string | null
+          transitaire_entry_number: string | null
           unit_price: number | null
           updated_at: string
           volume: number | null
@@ -446,6 +448,7 @@ export type Database = {
           created_at?: string
           current_transitaire?: string | null
           id?: string
+          is_received?: boolean | null
           order_date: string
           order_number: string
           packaging?: string | null
@@ -455,6 +458,7 @@ export type Database = {
           supplier: string
           total_price?: number | null
           transitaire_entry?: string | null
+          transitaire_entry_number?: string | null
           unit_price?: number | null
           updated_at?: string
           volume?: number | null
@@ -467,6 +471,7 @@ export type Database = {
           created_at?: string
           current_transitaire?: string | null
           id?: string
+          is_received?: boolean | null
           order_date?: string
           order_number?: string
           packaging?: string | null
@@ -476,6 +481,7 @@ export type Database = {
           supplier?: string
           total_price?: number | null
           transitaire_entry?: string | null
+          transitaire_entry_number?: string | null
           unit_price?: number | null
           updated_at?: string
           volume?: number | null

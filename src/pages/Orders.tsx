@@ -61,10 +61,8 @@ interface Order {
   total_price?: number;
   current_transitaire?: string;
   container_id?: string;
-  estimated_arrival_date?: string;
-  is_arrived?: boolean;
-  pallets_received?: number;
-  reception_number?: string;
+  is_received?: boolean;
+  transitaire_entry_number?: string;
   client?: { name: string };
   order_products?: Array<{
     id: string;
@@ -100,6 +98,14 @@ const PAYMENT_TYPES = [
   "100% à la commande"
 ];
 
+const TRANSITAIRES = [
+  "BOLLORÉ",
+  "MAERSK",
+  "MSC",
+  "CMA CGM",
+  "HAPAG-LLOYD"
+];
+
 const Orders = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -128,10 +134,8 @@ const Orders = () => {
       payment_type: "",
       status: "",
       current_transitaire: "",
-      estimated_arrival_date: "",
-      is_arrived: false,
-      pallets_received: "",
-      reception_number: "",
+      is_received: false,
+      transitaire_entry_number: "",
       products: [],
     },
   });
@@ -241,6 +245,8 @@ const Orders = () => {
         payment_type: data.payment_type,
         status: data.status,
         current_transitaire: data.current_transitaire || null,
+        is_received: data.is_received || false,
+        transitaire_entry_number: data.transitaire_entry_number || null,
       };
 
       const { data: insertedOrder, error } = await supabase
@@ -548,57 +554,60 @@ const Orders = () => {
                                   <SelectValue placeholder="Sélectionner un transitaire" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent>
-                                {Array.from(new Set(containers.map(c => c.transitaire))).map(transitaire => (
-                                  <SelectItem key={transitaire} value={transitaire}>{transitaire}</SelectItem>
-                                ))}
-                              </SelectContent>
+                               <SelectContent>
+                                 {TRANSITAIRES.map(transitaire => (
+                                   <SelectItem key={transitaire} value={transitaire}>{transitaire}</SelectItem>
+                                 ))}
+                               </SelectContent>
                             </Select>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                    </div>
+                     </div>
 
-                    <FormField
-                      control={orderForm.control}
-                      name="estimated_arrival_date"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Date estimée d'arrivée chez le transitaire</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(new Date(field.value), "PPP")
-                                  ) : (
-                                    <span>Sélectionner une date</span>
-                                  )}
-                                  <Calendar className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <CalendarComponent
-                                mode="single"
-                                selected={field.value ? new Date(field.value) : undefined}
-                                onSelect={(date) => field.onChange(date ? format(date, "yyyy-MM-dd") : "")}
-                                initialFocus
-                                className={cn("p-3 pointer-events-auto")}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                     {/* Conditional fields for transitaire */}
+                     {orderForm.watch("current_transitaire") && (
+                       <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                         <h4 className="font-medium">Informations de réception</h4>
+                         
+                         <FormField
+                           control={orderForm.control}
+                           name="is_received"
+                           render={({ field }) => (
+                             <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                               <FormControl>
+                                 <Checkbox
+                                   checked={field.value}
+                                   onCheckedChange={field.onChange}
+                                 />
+                               </FormControl>
+                               <div className="space-y-1 leading-none">
+                                 <FormLabel>
+                                   Commande réceptionnée chez le transitaire
+                                 </FormLabel>
+                               </div>
+                             </FormItem>
+                           )}
+                         />
+
+                         {orderForm.watch("is_received") && (
+                           <FormField
+                             control={orderForm.control}
+                             name="transitaire_entry_number"
+                             render={({ field }) => (
+                               <FormItem>
+                                 <FormLabel>Numéro d'entrée du transitaire</FormLabel>
+                                 <FormControl>
+                                   <Input {...field} placeholder="Ex: ENT-2024-001" />
+                                 </FormControl>
+                                 <FormMessage />
+                               </FormItem>
+                             )}
+                           />
+                         )}
+                       </div>
+                     )}
                   </div>
 
                   {/* Section produits */}
@@ -718,60 +727,6 @@ const Orders = () => {
                     ))}
                   </div>
 
-                  {/* Section réception */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Informations de réception</h3>
-                    
-                    <FormField
-                      control={orderForm.control}
-                      name="is_arrived"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel>
-                              Commande arrivée chez le transitaire
-                            </FormLabel>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={orderForm.control}
-                        name="pallets_received"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nombre de palettes reçues</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="number" min="0" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={orderForm.control}
-                        name="reception_number"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Numéro de réception chez le transitaire</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Numéro de réception" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
 
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => setIsNewOrderOpen(false)}>
@@ -827,8 +782,9 @@ const Orders = () => {
                   <TableHead>Fournisseur</TableHead>
                   <TableHead>Date de commande</TableHead>
                   <TableHead>Transitaire</TableHead>
-                  <TableHead>Produits</TableHead>
-                  <TableHead>Statut</TableHead>
+                   <TableHead>Réception</TableHead>
+                   <TableHead>Produits</TableHead>
+                   <TableHead>Statut</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -844,8 +800,21 @@ const Orders = () => {
                     <TableCell>{order.client?.name || "-"}</TableCell>
                     <TableCell>{order.supplier}</TableCell>
                     <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
-                    <TableCell>{order.current_transitaire || "-"}</TableCell>
-                    <TableCell>
+                     <TableCell>{order.current_transitaire || "-"}</TableCell>
+                     <TableCell>
+                       {order.is_received ? (
+                         <div className="flex items-center gap-1">
+                           <CheckCircle className="h-4 w-4 text-green-600" />
+                           <span className="text-sm text-green-600">Réceptionné</span>
+                           {order.transitaire_entry_number && (
+                             <span className="text-xs text-muted-foreground">({order.transitaire_entry_number})</span>
+                           )}
+                         </div>
+                       ) : (
+                         <span className="text-muted-foreground text-sm">En attente</span>
+                       )}
+                     </TableCell>
+                     <TableCell>
                       {order.order_products && order.order_products.length > 0 ? (
                         <div className="space-y-1">
                           {order.order_products.slice(0, 2).map((op, idx) => (
