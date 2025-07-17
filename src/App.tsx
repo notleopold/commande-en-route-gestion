@@ -13,7 +13,6 @@ import ProductDetail from "./pages/ProductDetail";
 import Products from "./pages/Products";
 import Clients from "./pages/Clients";
 import Orders from "./pages/Orders";
-import Containers from "./pages/Containers";
 import Groupage from "./pages/Groupage";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
@@ -43,7 +42,7 @@ const App = () => (
           <Route path="/clients" element={<Clients />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/transitaires" element={<Transitaires />} />
-          <Route path="/containers" element={<Containers />} />
+          <Route path="/containers" element={<Groupage />} />
           <Route path="/groupage" element={<Groupage />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
