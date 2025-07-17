@@ -20,6 +20,8 @@ interface Order {
   cartons?: number;
   total_price?: number;
   current_transitaire?: string;
+  is_received?: boolean;
+  transitaire_entry_number?: string;
   container_id?: string;
   clients?: { name: string };
   containers?: { number: string; type: string };
@@ -161,6 +163,24 @@ export default function OrderDetail() {
                 <div>
                   <label className="text-sm text-muted-foreground">Transitaire</label>
                   <p className="font-medium">{order.current_transitaire}</p>
+                </div>
+              )}
+              {order.is_received !== undefined && (
+                <div>
+                  <label className="text-sm text-muted-foreground">Statut de réception</label>
+                  <p className="font-medium">
+                    {order.is_received ? (
+                      <span className="text-green-600">✓ Réceptionné</span>
+                    ) : (
+                      <span className="text-red-600">✗ Non réceptionné</span>
+                    )}
+                  </p>
+                </div>
+              )}
+              {order.transitaire_entry_number && (
+                <div>
+                  <label className="text-sm text-muted-foreground">Numéro d'entrée transitaire</label>
+                  <p className="font-medium">{order.transitaire_entry_number}</p>
                 </div>
               )}
               {order.containers && (
