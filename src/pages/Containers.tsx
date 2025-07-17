@@ -154,6 +154,7 @@ export default function Containers() {
             )
           )
         `)
+        .eq('is_received', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

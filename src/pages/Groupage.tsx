@@ -77,7 +77,7 @@ interface Order {
 
 const GROUPAGE_STATUSES = ["available", "full", "departed", "arrived"];
 const BOOKING_STATUSES = ["pending", "confirmed", "cancelled"];
-const TRANSITAIRES = ["SIFA", "TAF", "CEVA"];
+// Les transitaires seront chargés dynamiquement depuis la base de données
 
 function Groupage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -94,8 +94,12 @@ function Groupage() {
   const [selectedGroupage, setSelectedGroupage] = useState<Groupage | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [containers, setContainers] = useState<any[]>([]);
+  const [transitaires, setTransitaires] = useState<{name: string}[]>([]);
+  const [clients, setClients] = useState<{id: string, name: string}[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [groupageToDelete, setGroupageToDelete] = useState<Groupage | null>(null);
+  const [isEditGroupageOpen, setIsEditGroupageOpen] = useState(false);
+  const [editingGroupage, setEditingGroupage] = useState<Groupage | null>(null);
 
   const bookingForm = useForm({
     defaultValues: {
@@ -110,13 +114,26 @@ function Groupage() {
     defaultValues: {
       container_number: "",
       transitaire: "",
+      clients: [] as string[],
       max_space_pallets: "",
       max_weight: "",
       max_volume: "",
       allows_dangerous_goods: false,
-      cost_per_palette: "",
-      cost_per_kg: "",
-      cost_per_m3: "",
+      departure_date: "",
+      arrival_date: "",
+      notes: "",
+    },
+  });
+
+  const editGroupageForm = useForm({
+    defaultValues: {
+      container_number: "",
+      transitaire: "",
+      clients: [] as string[],
+      max_space_pallets: "",
+      max_weight: "",
+      max_volume: "",
+      allows_dangerous_goods: false,
       departure_date: "",
       arrival_date: "",
       notes: "",
@@ -129,7 +146,7 @@ function Groupage() {
 
   const fetchData = async () => {
     try {
-      const [groupagesRes, ordersRes, containersRes] = await Promise.all([
+      const [groupagesRes, ordersRes, containersRes, transitairesRes, clientsRes] = await Promise.all([
         supabase.from('groupages').select(`
           *,
           container:containers(*),
@@ -139,17 +156,23 @@ function Groupage() {
           *,
           client:clients(*),
           order_products(*, product:products(*))
-        `).is('container_id', null).order('created_at', { ascending: false }),
-        supabase.from('containers').select('*').order('created_at', { ascending: false })
+        `).is('container_id', null).eq('is_received', true).order('created_at', { ascending: false }),
+        supabase.from('containers').select('*').order('created_at', { ascending: false }),
+        supabase.from('transitaires').select('name').eq('status', 'active').order('name'),
+        supabase.from('clients').select('id, name').eq('status', 'Active').order('name')
       ]);
 
       if (groupagesRes.error) throw groupagesRes.error;
       if (ordersRes.error) throw ordersRes.error;
       if (containersRes.error) throw containersRes.error;
+      if (transitairesRes.error) throw transitairesRes.error;
+      if (clientsRes.error) throw clientsRes.error;
 
       setGroupages(groupagesRes.data || []);
       setOrders(ordersRes.data || []);
       setContainers(containersRes.data || []);
+      setTransitaires(transitairesRes.data || []);
+      setClients(clientsRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error("Erreur lors du chargement des données");
@@ -204,10 +227,8 @@ function Groupage() {
   };
 
   const calculateBookingCost = (groupage: Groupage, palettes: number, weight: number, volume: number) => {
-    let cost = palettes * groupage.cost_per_palette;
-    if (groupage.cost_per_kg) cost += weight * groupage.cost_per_kg;
-    if (groupage.cost_per_m3) cost += volume * groupage.cost_per_m3;
-    return cost;
+    // Pour les groupages, pas de calcul automatique des coûts
+    return 0;
   };
 
   const handleBookOrder = async (data: any) => {
@@ -314,9 +335,9 @@ function Groupage() {
         max_volume: maxVolume,
         available_volume: maxVolume,
         allows_dangerous_goods: data.allows_dangerous_goods,
-        cost_per_palette: parseFloat(data.cost_per_palette),
-        cost_per_kg: data.cost_per_kg ? parseFloat(data.cost_per_kg) : null,
-        cost_per_m3: data.cost_per_m3 ? parseFloat(data.cost_per_m3) : null,
+        cost_per_palette: 0, // Pas de tarification pour les groupages
+        cost_per_kg: null,
+        cost_per_m3: null,
         departure_date: data.departure_date || null,
         arrival_date: data.arrival_date || null,
         notes: data.notes || null,
@@ -474,8 +495,8 @@ function Groupage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous les transitaires</SelectItem>
-                {TRANSITAIRES.map(transitaire => (
-                  <SelectItem key={transitaire} value={transitaire}>{transitaire}</SelectItem>
+                {transitaires.map(transitaire => (
+                  <SelectItem key={transitaire.name} value={transitaire.name}>{transitaire.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -500,7 +521,7 @@ function Groupage() {
                   <TableHead>Transitaire</TableHead>
                   <TableHead>Capacité</TableHead>
                   <TableHead>Disponible</TableHead>
-                  <TableHead>Prix/Palette</TableHead>
+                  <TableHead>Tarification</TableHead>
                   <TableHead>Départ/Arrivée</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead>Actions</TableHead>
@@ -547,14 +568,12 @@ function Groupage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div className="font-medium">{groupage.cost_per_palette.toFixed(2)} €</div>
-                          {groupage.cost_per_kg > 0 && (
-                            <div className="text-muted-foreground">+{groupage.cost_per_kg.toFixed(2)} €/kg</div>
-                          )}
-                        </div>
-                      </TableCell>
+                       <TableCell>
+                         <div className="text-sm">
+                           <div className="font-medium">-</div>
+                           <div className="text-muted-foreground text-xs">Voir transitaire</div>
+                         </div>
+                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
                           <div>Départ: {groupage.departure_date ? new Date(groupage.departure_date).toLocaleDateString() : "TBD"}</div>
@@ -634,18 +653,12 @@ function Groupage() {
                   </div>
                   
                   <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium mb-2">Tarification</h4>
-                      <div className="space-y-2 text-sm">
-                        <div>Prix par palette: {selectedGroupage.cost_per_palette.toFixed(2)} €</div>
-                        {selectedGroupage.cost_per_kg > 0 && (
-                          <div>Prix par kg: {selectedGroupage.cost_per_kg.toFixed(2)} €</div>
-                        )}
-                        {selectedGroupage.cost_per_m3 > 0 && (
-                          <div>Prix par m³: {selectedGroupage.cost_per_m3.toFixed(2)} €</div>
-                        )}
-                      </div>
-                    </div>
+                     <div>
+                       <h4 className="font-medium mb-2">Tarification</h4>
+                       <div className="space-y-2 text-sm">
+                         <div>Voir avec le transitaire pour les tarifs</div>
+                       </div>
+                     </div>
                     
                     <div>
                       <h4 className="font-medium mb-2">Dates</h4>
@@ -745,9 +758,9 @@ function Groupage() {
                     <div>Poids: {(selectedGroupage.available_weight/1000).toFixed(1)}T disponibles</div>
                     <div>Volume: {selectedGroupage.available_volume.toFixed(1)}m³ disponibles</div>
                   </div>
-                  <div className="mt-2 text-sm">
-                    <strong>Coût par palette: {selectedGroupage.cost_per_palette.toFixed(2)} €</strong>
-                  </div>
+                   <div className="mt-2 text-sm">
+                     <strong>Tarifs: Voir avec le transitaire</strong>
+                   </div>
                 </div>
 
                 <Form {...bookingForm}>
@@ -862,22 +875,14 @@ function Groupage() {
                       />
                     </div>
 
-                    {bookingForm.watch("palettes_booked") && (
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <h5 className="font-medium mb-2">Estimation du coût</h5>
-                        <div className="text-lg font-bold">
-                          {calculateBookingCost(
-                            selectedGroupage,
-                            parseInt(bookingForm.watch("palettes_booked")) || 0,
-                            parseFloat(bookingForm.watch("weight_booked")) || 0,
-                            parseFloat(bookingForm.watch("volume_booked")) || 0
-                          ).toFixed(2)} €
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Cette réservation sera en attente de confirmation par le transitaire
-                        </div>
-                      </div>
-                    )}
+                     {bookingForm.watch("palettes_booked") && (
+                       <div className="bg-blue-50 p-4 rounded-lg">
+                         <h5 className="font-medium mb-2">Information</h5>
+                         <div className="text-sm text-muted-foreground">
+                           Cette réservation sera en attente de confirmation par le transitaire. Les tarifs seront définis par le transitaire.
+                         </div>
+                       </div>
+                     )}
 
                     <div className="flex justify-end space-x-2">
                       <Button variant="outline" onClick={() => setIsBookOrderOpen(false)}>
@@ -929,13 +934,13 @@ function Groupage() {
                               <SelectValue placeholder="Sélectionner un transitaire" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
-                            {TRANSITAIRES.map(transitaire => (
-                              <SelectItem key={transitaire} value={transitaire}>
-                                {transitaire}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
+                           <SelectContent>
+                             {transitaires.map(transitaire => (
+                               <SelectItem key={transitaire.name} value={transitaire.name}>
+                                 {transitaire.name}
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
@@ -987,49 +992,7 @@ function Groupage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField
-                    control={createGroupageForm.control}
-                    name="cost_per_palette"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Prix par palette (€)</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" step="0.01" placeholder="ex: 150.00" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={createGroupageForm.control}
-                    name="cost_per_kg"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Prix par kg (€) - optionnel</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" step="0.01" placeholder="ex: 0.15" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={createGroupageForm.control}
-                    name="cost_per_m3"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Prix par m³ (€) - optionnel</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="number" step="0.01" placeholder="ex: 25.00" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                 {/* Les champs de prix ont été supprimés pour les groupages */}
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -1105,6 +1068,176 @@ function Groupage() {
                   <Button type="submit">
                     Créer le groupage
                   </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog Modification Groupage */}
+        <Dialog open={isEditGroupageOpen} onOpenChange={setIsEditGroupageOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Modifier le groupage</DialogTitle>
+            </DialogHeader>
+            <Form {...editGroupageForm}>
+              <form onSubmit={editGroupageForm.handleSubmit((data) => {
+                // TODO: Ajouter logique de modification du groupage
+                console.log("Modification groupage:", data);
+                setIsEditGroupageOpen(false);
+              })} className="space-y-6">
+                
+                <FormField
+                  control={editGroupageForm.control}
+                  name="container_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Numéro de conteneur</FormLabel>
+                      <FormControl>
+                        <Input {...field} disabled />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editGroupageForm.control}
+                  name="transitaire"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Transitaire</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionner un transitaire" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {transitaires.map(transitaire => (
+                            <SelectItem key={transitaire.name} value={transitaire.name}>
+                              {transitaire.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-3 gap-4">
+                  <FormField
+                    control={editGroupageForm.control}
+                    name="max_space_pallets"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Palettes max</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" placeholder="ex: 33" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editGroupageForm.control}
+                    name="max_weight"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Poids max (kg)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" placeholder="ex: 28000" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editGroupageForm.control}
+                    name="max_volume"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Volume max (m³)</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="number" step="0.1" placeholder="ex: 76.0" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={editGroupageForm.control}
+                  name="allows_dangerous_goods"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Accepte les produits dangereux</FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={editGroupageForm.control}
+                    name="departure_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date de départ</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="date" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editGroupageForm.control}
+                    name="arrival_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date d'arrivée</FormLabel>
+                        <FormControl>
+                          <Input {...field} type="date" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={editGroupageForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Informations complémentaires..." />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setIsEditGroupageOpen(false)}>
+                    Annuler
+                  </Button>
+                  <Button type="submit">Modifier</Button>
                 </div>
               </form>
             </Form>

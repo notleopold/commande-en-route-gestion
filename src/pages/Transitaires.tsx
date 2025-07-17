@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Truck, Phone, Mail, Edit, Trash2, Plus, MapPin, Package } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { Layout } from "@/components/Layout";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 
 interface Transitaire {
@@ -241,10 +242,10 @@ export default function Transitaires() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Transitaires</h1>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <Layout title="Transitaires">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={handleAdd}>
               <Plus className="h-4 w-4 mr-2" />
@@ -562,6 +563,7 @@ export default function Transitaires() {
         description="Êtes-vous sûr de vouloir supprimer le transitaire"
         itemName={deletingTransitaire?.name}
       />
-    </div>
+      </div>
+    </Layout>
   );
 }
