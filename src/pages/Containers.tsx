@@ -560,22 +560,77 @@ export default function Containers() {
   }
 
   return (
-    <Layout title="Gestion des Conteneurs">
+    <Layout title="Conteneurs">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Gestion des Conteneurs</h2>
-            <p className="text-muted-foreground">Réservez et gérez vos conteneurs auprès des transitaires</p>
+        {/* Header avec stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Conteneurs</CardTitle>
+              <Container className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{containers.length}</div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">En Planning</CardTitle>
+              <Clock className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {containers.filter(c => c.status === 'planning').length}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">En Transit</CardTitle>
+              <Ship className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {containers.filter(c => c.status === 'transit').length}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Livrés</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {containers.filter(c => c.status === 'delivered').length}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Filtres et actions */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Rechercher un conteneur..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
           </div>
           
           <Dialog open={isNewContainerOpen} onOpenChange={setIsNewContainerOpen}>
             <DialogTrigger asChild>
               <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Réserver un Conteneur
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter un conteneur
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Réserver un Nouveau Conteneur</DialogTitle>
               </DialogHeader>
@@ -678,23 +733,14 @@ export default function Containers() {
           </Dialog>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Rechercher par numéro ou transitaire..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+        {/* Titre de la section */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Conteneurs disponibles</h2>
         </div>
 
         {/* Containers Table */}
         <Card>
-          <CardHeader>
-            <CardTitle>Liste des Conteneurs</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
