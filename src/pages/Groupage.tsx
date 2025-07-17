@@ -360,6 +360,43 @@ function Groupage() {
     }
   };
 
+  const handleEditGroupage = async (data: any) => {
+    if (!editingGroupage) return;
+
+    try {
+      const maxPallets = parseInt(data.max_space_pallets);
+      const maxWeight = parseFloat(data.max_weight);
+      const maxVolume = parseFloat(data.max_volume);
+
+      const groupageData = {
+        transitaire: data.transitaire,
+        max_space_pallets: maxPallets,
+        max_weight: maxWeight,
+        max_volume: maxVolume,
+        allows_dangerous_goods: data.allows_dangerous_goods,
+        departure_date: data.departure_date || null,
+        arrival_date: data.arrival_date || null,
+        notes: data.notes || null,
+      };
+
+      const { error } = await supabase
+        .from('groupages')
+        .update(groupageData)
+        .eq('id', editingGroupage.id);
+
+      if (error) throw error;
+
+      toast.success("Groupage modifié avec succès");
+      setIsEditGroupageOpen(false);
+      setEditingGroupage(null);
+      editGroupageForm.reset();
+      fetchData();
+    } catch (error) {
+      console.error('Error updating groupage:', error);
+      toast.error("Erreur lors de la modification du groupage");
+    }
+  };
+
   const getUsagePercentage = (used: number, total: number) => {
     return total > 0 ? (used / total) * 100 : 0;
   };
@@ -373,16 +410,16 @@ function Groupage() {
     if (!groupageToDelete) return;
 
     try {
-      const { error } = await supabase.rpc('move_to_trash', {
-        p_table_name: 'groupages',
-        p_item_id: groupageToDelete.id,
-        p_reason: 'Suppression via interface utilisateur'
-      });
+      // Suppression directe du groupage
+      const { error } = await supabase
+        .from('groupages')
+        .delete()
+        .eq('id', groupageToDelete.id);
 
       if (error) throw error;
 
       setGroupages(prev => prev.filter(g => g.id !== groupageToDelete.id));
-      toast.success("Groupage déplacé vers la corbeille");
+      toast.success("Groupage supprimé avec succès");
     } catch (error) {
       console.error('Error deleting groupage:', error);
       toast.error("Erreur lors de la suppression");
@@ -599,6 +636,25 @@ function Groupage() {
                              variant="outline"
                              size="sm"
                              onClick={() => {
+                               setEditingGroupage(groupage);
+                               editGroupageForm.setValue("container_number", groupage.container?.number || "");
+                               editGroupageForm.setValue("transitaire", groupage.transitaire);
+                               editGroupageForm.setValue("max_space_pallets", groupage.max_space_pallets.toString());
+                               editGroupageForm.setValue("max_weight", groupage.max_weight.toString());
+                               editGroupageForm.setValue("max_volume", groupage.max_volume.toString());
+                               editGroupageForm.setValue("allows_dangerous_goods", groupage.allows_dangerous_goods);
+                               editGroupageForm.setValue("departure_date", groupage.departure_date || "");
+                               editGroupageForm.setValue("arrival_date", groupage.arrival_date || "");
+                               editGroupageForm.setValue("notes", groupage.notes || "");
+                               setIsEditGroupageOpen(true);
+                             }}
+                           >
+                             <Edit className="h-4 w-4" />
+                           </Button>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => {
                                setSelectedGroupage(groupage);
                                setIsBookOrderOpen(true);
                              }}
@@ -758,9 +814,6 @@ function Groupage() {
                     <div>Poids: {(selectedGroupage.available_weight/1000).toFixed(1)}T disponibles</div>
                     <div>Volume: {selectedGroupage.available_volume.toFixed(1)}m³ disponibles</div>
                   </div>
-                   <div className="mt-2 text-sm">
-                     <strong>Tarifs: Voir avec le transitaire</strong>
-                   </div>
                 </div>
 
                 <Form {...bookingForm}>
@@ -875,14 +928,6 @@ function Groupage() {
                       />
                     </div>
 
-                     {bookingForm.watch("palettes_booked") && (
-                       <div className="bg-blue-50 p-4 rounded-lg">
-                         <h5 className="font-medium mb-2">Information</h5>
-                         <div className="text-sm text-muted-foreground">
-                           Cette réservation sera en attente de confirmation par le transitaire. Les tarifs seront définis par le transitaire.
-                         </div>
-                       </div>
-                     )}
 
                     <div className="flex justify-end space-x-2">
                       <Button variant="outline" onClick={() => setIsBookOrderOpen(false)}>
@@ -1081,11 +1126,7 @@ function Groupage() {
               <DialogTitle>Modifier le groupage</DialogTitle>
             </DialogHeader>
             <Form {...editGroupageForm}>
-              <form onSubmit={editGroupageForm.handleSubmit((data) => {
-                // TODO: Ajouter logique de modification du groupage
-                console.log("Modification groupage:", data);
-                setIsEditGroupageOpen(false);
-              })} className="space-y-6">
+              <form onSubmit={editGroupageForm.handleSubmit(handleEditGroupage)} className="space-y-6">
                 
                 <FormField
                   control={editGroupageForm.control}

@@ -82,7 +82,8 @@ export default function Containers() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [availableOrders, setAvailableOrders] = useState<Order[]>([]);
   const [containerOrders, setContainerOrders] = useState<Order[]>([]);
-  const [containers, setContainers] = useState<ContainerData[]>([]);
+const [containers, setContainers] = useState<ContainerData[]>([]);
+  const [transitaires, setTransitaires] = useState<{name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [newContainerForm, setNewContainerForm] = useState({
     number: '',
@@ -121,6 +122,7 @@ export default function Containers() {
   useEffect(() => {
     fetchContainers();
     fetchOrders();
+    fetchTransitaires();
   }, []);
 
   const fetchContainers = async () => {
@@ -155,6 +157,7 @@ export default function Containers() {
           )
         `)
         .eq('is_received', true)
+        .not('current_transitaire', 'is', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -162,6 +165,22 @@ export default function Containers() {
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error("Erreur lors du chargement des commandes");
+    }
+  };
+
+  const fetchTransitaires = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transitaires')
+        .select('name')
+        .eq('status', 'active')
+        .order('name');
+
+      if (error) throw error;
+      setTransitaires(data || []);
+    } catch (error) {
+      console.error('Error fetching transitaires:', error);
+      toast.error("Erreur lors du chargement des transitaires");
     }
   };
 
@@ -668,9 +687,11 @@ export default function Containers() {
                         <SelectValue placeholder="Sélectionner le transitaire" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="SIFA">SIFA</SelectItem>
-                        <SelectItem value="TAF">TAF</SelectItem>
-                        <SelectItem value="TLF">TLF</SelectItem>
+                        {transitaires.map((transitaire) => (
+                          <SelectItem key={transitaire.name} value={transitaire.name}>
+                            {transitaire.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
