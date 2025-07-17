@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Plus, Search, Container, Package, MapPin, Calendar, Eye, Edit, Ship, 
   Weight, Ruler, AlertTriangle, Truck, Package2, Clock, CheckCircle,
@@ -20,6 +22,7 @@ import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { checkContainerCompatibility } from "@/lib/imdg-compatibility";
+import { useForm } from "react-hook-form";
 
 interface Order {
   id: string;
@@ -31,6 +34,7 @@ interface Order {
   cartons?: number;
   current_transitaire?: string;
   container_id?: string;
+  is_received?: boolean;
   total_price?: number;
   order_products?: Array<{
     products: Product;
@@ -70,7 +74,9 @@ export default function Containers() {
   const [isEditContainerOpen, setIsEditContainerOpen] = useState(false);
   const [isViewContainerOpen, setIsViewContainerOpen] = useState(false);
   const [isLoadingPlanOpen, setIsLoadingPlanOpen] = useState(false);
+  const [isBookOrderOpen, setIsBookOrderOpen] = useState(false);
   const [selectedContainer, setSelectedContainer] = useState<ContainerData | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [containerToDelete, setContainerToDelete] = useState<ContainerData | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -101,6 +107,15 @@ export default function Containers() {
     max_volume: 28,
     max_pallets: 33,
     dangerous_goods: false
+  });
+
+  const bookingForm = useForm({
+    defaultValues: {
+      order_id: "",
+      palettes_booked: "",
+      weight_booked: "",
+      volume_booked: "",
+    },
   });
   
   useEffect(() => {
@@ -267,6 +282,73 @@ export default function Containers() {
     } catch (error) {
       console.error('Error unlinking order from container:', error);
       toast.error("Erreur lors de la déliaison");
+    }
+  };
+
+  const canBookOrder = (order: Order, container: ContainerData) => {
+    // Check if same transitaire
+    if (order.current_transitaire !== container.transitaire) {
+      return { canBook: false, reason: `Commande chez ${order.current_transitaire}, conteneur chez ${container.transitaire}` };
+    }
+
+    // Check if order is received
+    if (!order.is_received) {
+      return { canBook: false, reason: "Commande non réceptionnée chez le transitaire" };
+    }
+
+    // Check if has dangerous goods and container allows them
+    const hasDangerous = order.order_products?.some(op => op.products?.dangerous);
+    if (hasDangerous && !container.dangerous_goods) {
+      return { canBook: false, reason: "Conteneur n'accepte pas les produits dangereux" };
+    }
+
+    // Check if enough space (estimates)
+    const currentWeight = calculateTotalWeight();
+    const currentVolume = calculateTotalVolume();
+    const currentPallets = calculateTotalPalettes();
+    
+    const orderWeight = order.weight || 0;
+    const orderVolume = order.volume || 0;
+    const orderPallets = order.cartons ? Math.ceil(order.cartons / 20) : 1; // Estimate pallets from cartons
+    
+    if (currentWeight + orderWeight > container.max_weight) {
+      return { canBook: false, reason: `Dépassement de poids (${((currentWeight + orderWeight)/1000).toFixed(1)}T > ${(container.max_weight/1000).toFixed(1)}T)` };
+    }
+    
+    if (currentVolume + orderVolume > container.max_volume) {
+      return { canBook: false, reason: `Dépassement de volume (${(currentVolume + orderVolume).toFixed(1)}m³ > ${container.max_volume.toFixed(1)}m³)` };
+    }
+    
+    if (currentPallets + orderPallets > container.max_pallets) {
+      return { canBook: false, reason: `Dépassement de palettes (${currentPallets + orderPallets} > ${container.max_pallets})` };
+    }
+
+    return { canBook: true, reason: "" };
+  };
+
+  const handleBookOrder = async (data: any) => {
+    if (!selectedContainer || !selectedOrder) return;
+
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ container_id: selectedContainer.id })
+        .eq('id', selectedOrder.id);
+
+      if (error) throw error;
+
+      toast.success("Commande réservée dans le conteneur avec succès");
+      setIsBookOrderOpen(false);
+      bookingForm.reset();
+      fetchOrders();
+      
+      // Refresh the loading plan
+      if (selectedContainer) {
+        handleLoadingPlan(selectedContainer);
+      }
+    } catch (error) {
+      console.error('Error booking order:', error);
+      toast.error("Erreur lors de la réservation");
     }
   };
 
@@ -912,6 +994,20 @@ export default function Containers() {
             </DialogHeader>
             {selectedContainer && (
               <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <div></div>
+                  <Button 
+                    onClick={() => {
+                      setIsBookOrderOpen(true);
+                      setIsLoadingPlanOpen(false);
+                    }}
+                    className="mb-4"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Réserver une commande
+                  </Button>
+                </div>
+
                 <div className="grid grid-cols-2 gap-6">
                   {/* Compatible Orders */}
                   <Card>
@@ -1081,6 +1177,117 @@ export default function Containers() {
                     </div>
                   </CardContent>
                 </Card>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Book Order Modal */}
+        <Dialog open={isBookOrderOpen} onOpenChange={setIsBookOrderOpen}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Réserver dans le conteneur - {selectedContainer?.number}</DialogTitle>
+            </DialogHeader>
+            {selectedContainer && (
+              <div className="space-y-6">
+                <div className="bg-muted p-4 rounded-lg">
+                  <h4 className="font-medium mb-2">Espace disponible</h4>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>Palettes: {selectedContainer.max_pallets - calculateTotalPalettes()}/{selectedContainer.max_pallets}</div>
+                    <div>Poids: {((selectedContainer.max_weight - calculateTotalWeight())/1000).toFixed(1)}T disponibles</div>
+                    <div>Volume: {(selectedContainer.max_volume - calculateTotalVolume()).toFixed(1)}m³ disponibles</div>
+                  </div>
+                </div>
+
+                <Form {...bookingForm}>
+                  <form onSubmit={bookingForm.handleSubmit(handleBookOrder)} className="space-y-4">
+                    <FormField
+                      control={bookingForm.control}
+                      name="order_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Commande à réserver</FormLabel>
+                          <Select onValueChange={(value) => {
+                            field.onChange(value);
+                            const order = orders.find(o => o.id === value);
+                            setSelectedOrder(order || null);
+                          }} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Sélectionner une commande" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <ScrollArea className="h-64">
+                                {orders.filter(order => 
+                                  order.current_transitaire === selectedContainer.transitaire && 
+                                  !order.container_id
+                                ).map(order => {
+                                  const compatibility = canBookOrder(order, selectedContainer);
+                                  
+                                  return (
+                                    <SelectItem 
+                                      key={order.id} 
+                                      value={order.id}
+                                      disabled={!compatibility.canBook}
+                                    >
+                                      <div className="flex items-center justify-between w-full">
+                                        <div>
+                                          <div className="font-medium">{order.order_number}</div>
+                                          <div className="text-sm text-muted-foreground">
+                                            {order.supplier} | {order.cartons || 0} cartons
+                                          </div>
+                                          {order.is_received && (
+                                            <div className="text-xs text-green-600">✓ Réceptionné</div>
+                                          )}
+                                        </div>
+                                        {!compatibility.canBook && (
+                                          <div className="text-xs text-red-600 ml-2 max-w-32 truncate">
+                                            {compatibility.reason}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </SelectItem>
+                                  );
+                                })}
+                              </ScrollArea>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {selectedOrder && (
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <h5 className="font-medium mb-2">Détails de la commande sélectionnée</h5>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>Fournisseur: {selectedOrder.supplier}</div>
+                          <div>Transitaire: {selectedOrder.current_transitaire}</div>
+                          <div>Poids: {selectedOrder.weight ? `${(selectedOrder.weight/1000).toFixed(1)}T` : 'N/A'}</div>
+                          <div>Volume: {selectedOrder.volume ? `${selectedOrder.volume.toFixed(1)}m³` : 'N/A'}</div>
+                          <div>Cartons: {selectedOrder.cartons || 0}</div>
+                          <div>
+                            Statut réception: {selectedOrder.is_received ? (
+                              <span className="text-green-600">✓ Réceptionné</span>
+                            ) : (
+                              <span className="text-red-600">✗ Non réceptionné</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setIsBookOrderOpen(false)}>
+                        Annuler
+                      </Button>
+                      <Button type="submit" disabled={!selectedOrder}>
+                        Réserver
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               </div>
             )}
           </DialogContent>
