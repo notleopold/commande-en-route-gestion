@@ -35,6 +35,15 @@ interface Client {
   name: string;
 }
 
+interface Transitaire {
+  id: string;
+  name: string;
+  code?: string;
+  contact_name?: string;
+  contact_email?: string;
+  status: string;
+}
+
 const ORDER_STATUSES = [
   "BDC ENVOYÉ ZIKETRO",
   "À COMMANDER", 
@@ -52,19 +61,13 @@ const PAYMENT_TYPES = [
   "100% à la commande"
 ];
 
-const TRANSITAIRES = [
-  "BOLLORÉ",
-  "MAERSK",
-  "MSC",
-  "CMA CGM",
-  "HAPAG-LLOYD"
-];
 
 export default function OrderEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState<Order | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [transitaires, setTransitaires] = useState<Transitaire[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -75,6 +78,7 @@ export default function OrderEdit() {
     if (id) {
       fetchOrder();
       fetchClients();
+      fetchTransitaires();
     }
   }, [id]);
 
@@ -109,6 +113,21 @@ export default function OrderEdit() {
       setClients(data || []);
     } catch (error) {
       console.error('Error fetching clients:', error);
+    }
+  };
+
+  const fetchTransitaires = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transitaires')
+        .select('id, name, code, contact_name, contact_email, status')
+        .eq('status', 'active')
+        .order('name');
+
+      if (error) throw error;
+      setTransitaires(data || []);
+    } catch (error) {
+      console.error('Error fetching transitaires:', error);
     }
   };
 
@@ -294,9 +313,9 @@ export default function OrderEdit() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Aucun transitaire</SelectItem>
-                      {TRANSITAIRES.map(transitaire => (
-                        <SelectItem key={transitaire} value={transitaire}>
-                          {transitaire}
+                      {transitaires.map(transitaire => (
+                        <SelectItem key={transitaire.id} value={transitaire.name}>
+                          {transitaire.name} {transitaire.code && `(${transitaire.code})`}
                         </SelectItem>
                       ))}
                     </SelectContent>

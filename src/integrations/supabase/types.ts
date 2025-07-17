@@ -875,6 +875,69 @@ export type Database = {
         }
         Relationships: []
       }
+      transitaires: {
+        Row: {
+          address: string | null
+          city: string | null
+          code: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          country: string | null
+          created_at: string
+          dangerous_goods_certified: boolean | null
+          id: string
+          max_container_capacity: number | null
+          name: string
+          notes: string | null
+          services: string[] | null
+          specialties: string[] | null
+          status: string | null
+          tracking_system_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          code?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string
+          dangerous_goods_certified?: boolean | null
+          id?: string
+          max_container_capacity?: number | null
+          name: string
+          notes?: string | null
+          services?: string[] | null
+          specialties?: string[] | null
+          status?: string | null
+          tracking_system_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          code?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          country?: string | null
+          created_at?: string
+          dangerous_goods_certified?: boolean | null
+          id?: string
+          max_container_capacity?: number | null
+          name?: string
+          notes?: string | null
+          services?: string[] | null
+          specialties?: string[] | null
+          status?: string | null
+          tracking_system_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
