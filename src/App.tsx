@@ -13,13 +13,13 @@ import ProductDetail from "./pages/ProductDetail";
 import Products from "./pages/Products";
 import Clients from "./pages/Clients";
 import Orders from "./pages/Orders";
-import Shipments from "./pages/Shipments";
 import Containers from "./pages/Containers";
 import Groupage from "./pages/Groupage";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import TrashManagement from "./pages/TrashManagement";
+import Transitaires from "./pages/Transitaires";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -42,7 +42,7 @@ const App = () => (
           <Route path="/products" element={<Products />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/orders" element={<Orders />} />
-          <Route path="/shipments" element={<Shipments />} />
+          <Route path="/transitaires" element={<Transitaires />} />
           <Route path="/containers" element={<Containers />} />
           <Route path="/groupage" element={<Groupage />} />
           <Route path="/reports" element={<Reports />} />

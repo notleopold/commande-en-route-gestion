@@ -19,7 +19,7 @@ const menuItems = [
   { title: "Produits", url: "/products", icon: Package },
   { title: "Fournisseurs", url: "/suppliers", icon: Building2 },
   { title: "Clients", url: "/clients", icon: UserCheck },
-  { title: "Expéditions", url: "/shipments", icon: Ship },
+  { title: "Transitaires", url: "/transitaires", icon: Truck },
   { title: "Conteneurs", url: "/containers", icon: Container },
   { title: "Groupage", url: "/groupage", icon: Boxes },
   { title: "Rapports", url: "/reports", icon: FileText },
