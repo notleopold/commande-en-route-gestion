@@ -26,6 +26,9 @@ interface Container {
   dangerous_goods: boolean;
   etd?: string;
   eta?: string;
+  departure_port?: string;
+  arrival_port?: string;
+  port_cutoff?: string;
   created_at: string;
 }
 
@@ -59,6 +62,9 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
       dangerous_goods: false,
       etd: "",
       eta: "",
+      departure_port: "",
+      arrival_port: "",
+      port_cutoff: "",
     },
   });
 
@@ -73,6 +79,9 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
       dangerous_goods: false,
       etd: "",
       eta: "",
+      departure_port: "",
+      arrival_port: "",
+      port_cutoff: "",
     },
   });
 
@@ -110,6 +119,9 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
         dangerous_goods: data.dangerous_goods,
         etd: data.etd || null,
         eta: data.eta || null,
+        departure_port: data.departure_port || null,
+        arrival_port: data.arrival_port || null,
+        port_cutoff: data.port_cutoff || null,
         status: 'planning'
       };
 
@@ -143,6 +155,9 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
         dangerous_goods: data.dangerous_goods,
         etd: data.etd || null,
         eta: data.eta || null,
+        departure_port: data.departure_port || null,
+        arrival_port: data.arrival_port || null,
+        port_cutoff: data.port_cutoff || null,
       };
 
       const { error } = await supabase
@@ -390,6 +405,9 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
                           editForm.setValue("dangerous_goods", container.dangerous_goods);
                           editForm.setValue("etd", container.etd || "");
                           editForm.setValue("eta", container.eta || "");
+                          editForm.setValue("departure_port", container.departure_port || "");
+                          editForm.setValue("arrival_port", container.arrival_port || "");
+                          editForm.setValue("port_cutoff", container.port_cutoff || "");
                           setIsEditOpen(true);
                         }}
                       >
@@ -557,6 +575,53 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
                   )}
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={createForm.control}
+                  name="departure_port"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Port de départ</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Ex: Le Havre, Terminal De France" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={createForm.control}
+                  name="arrival_port"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Port d'arrivée</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Ex: Dakar, DP World Terminal" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={createForm.control}
+                name="port_cutoff"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cut-off portuaire</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="datetime-local" />
+                    </FormControl>
+                    <div className="text-sm text-muted-foreground">
+                      Date et heure limite à laquelle les marchandises doivent être déposées au port (ex : 31-JUL-2025, 11:30 AM)
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={createForm.control}
@@ -741,6 +806,53 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="departure_port"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Port de départ</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Ex: Le Havre, Terminal De France" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="arrival_port"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Port d'arrivée</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Ex: Dakar, DP World Terminal" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={editForm.control}
+                name="port_cutoff"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cut-off portuaire</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="datetime-local" />
+                    </FormControl>
+                    <div className="text-sm text-muted-foreground">
+                      Date et heure limite à laquelle les marchandises doivent être déposées au port (ex : 31-JUL-2025, 11:30 AM)
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={editForm.control}
                 name="dangerous_goods"
@@ -807,6 +919,15 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
                     <div className="space-y-2 text-sm">
                       <div>ETD: {selectedContainer.etd ? new Date(selectedContainer.etd).toLocaleDateString() : "Non défini"}</div>
                       <div>ETA: {selectedContainer.eta ? new Date(selectedContainer.eta).toLocaleDateString() : "Non défini"}</div>
+                      <div>Cut-off: {selectedContainer.port_cutoff ? new Date(selectedContainer.port_cutoff).toLocaleString() : "Non défini"}</div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium mb-2">Ports</h4>
+                    <div className="space-y-2 text-sm">
+                      <div>Départ: {selectedContainer.departure_port || "Non défini"}</div>
+                      <div>Arrivée: {selectedContainer.arrival_port || "Non défini"}</div>
                     </div>
                   </div>
                 </div>

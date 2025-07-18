@@ -141,8 +141,10 @@ export type Database = {
       }
       containers: {
         Row: {
+          arrival_port: string | null
           created_at: string
           dangerous_goods: boolean | null
+          departure_port: string | null
           eta: string | null
           etd: string | null
           id: string
@@ -150,14 +152,17 @@ export type Database = {
           max_volume: number | null
           max_weight: number | null
           number: string
+          port_cutoff: string | null
           status: string | null
           transitaire: string
           type: string
           updated_at: string
         }
         Insert: {
+          arrival_port?: string | null
           created_at?: string
           dangerous_goods?: boolean | null
+          departure_port?: string | null
           eta?: string | null
           etd?: string | null
           id?: string
@@ -165,14 +170,17 @@ export type Database = {
           max_volume?: number | null
           max_weight?: number | null
           number: string
+          port_cutoff?: string | null
           status?: string | null
           transitaire: string
           type: string
           updated_at?: string
         }
         Update: {
+          arrival_port?: string | null
           created_at?: string
           dangerous_goods?: boolean | null
+          departure_port?: string | null
           eta?: string | null
           etd?: string | null
           id?: string
@@ -180,6 +188,7 @@ export type Database = {
           max_volume?: number | null
           max_weight?: number | null
           number?: string
+          port_cutoff?: string | null
           status?: string | null
           transitaire?: string
           type?: string
