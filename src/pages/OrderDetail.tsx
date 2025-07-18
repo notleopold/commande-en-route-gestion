@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Package, Truck, Calendar, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { OrderProductsManager } from "@/components/OrderProductsManager";
 
 interface Order {
   id: string;
@@ -26,10 +27,15 @@ interface Order {
   clients?: { name: string };
   containers?: { number: string; type: string };
   order_products?: Array<{
+    id?: string;
+    product_id: string;
     quantity: number;
     unit_price: number;
     total_price: number;
+    palette_quantity?: number;
+    carton_quantity?: number;
     products: {
+      id: string;
       name: string;
       sku: string;
       dangerous: boolean;
@@ -59,10 +65,14 @@ export default function OrderDetail() {
           clients (name),
           containers (number, type),
           order_products (
+            id,
+            product_id,
             quantity,
             unit_price,
             total_price,
-            products (name, sku, dangerous, imdg_class)
+            palette_quantity,
+            carton_quantity,
+            products (id, name, sku, dangerous, imdg_class)
           )
         `)
         .eq('id', id)
@@ -227,38 +237,11 @@ export default function OrderDetail() {
           </Card>
         </div>
 
-        {order.order_products && order.order_products.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Produits commandés</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {order.order_products.map((orderProduct, index) => (
-                  <div key={index} className="flex justify-between items-center p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{orderProduct.products.name}</h4>
-                      <p className="text-sm text-muted-foreground">SKU: {orderProduct.products.sku}</p>
-                      {orderProduct.products.dangerous && (
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge variant="destructive">Dangereux</Badge>
-                          {orderProduct.products.imdg_class && (
-                            <Badge variant="outline">{orderProduct.products.imdg_class}</Badge>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">Qté: {orderProduct.quantity}</p>
-                      <p className="text-sm text-muted-foreground">{orderProduct.unit_price}€ / unité</p>
-                      <p className="font-bold">{orderProduct.total_price}€</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <OrderProductsManager 
+          orderId={order.id}
+          orderProducts={order.order_products || []}
+          onUpdate={fetchOrder}
+        />
       </div>
     </Layout>
   );
