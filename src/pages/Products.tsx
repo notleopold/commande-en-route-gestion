@@ -81,6 +81,8 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [productToArchive, setProductToArchive] = useState<Product | null>(null);
 
   const form = useForm({
     defaultValues: {
@@ -256,6 +258,18 @@ export default function Products() {
     } finally {
       setDeleteDialogOpen(false);
       setProductToDelete(null);
+    }
+  };
+
+  const confirmArchiveProduct = async () => {
+    if (!productToArchive) return;
+    
+    try {
+      await handleArchiveProduct(productToArchive.id);
+      setArchiveDialogOpen(false);
+      setProductToArchive(null);
+    } catch (error) {
+      console.error('Error archiving product:', error);
     }
   };
 
@@ -1092,26 +1106,34 @@ export default function Products() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleEditProduct(product)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditProduct(product);
+                          }}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleArchiveProduct(product.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProductToArchive(product);
+                            setArchiveDialogOpen(true);
+                          }}
                         >
                           <Archive className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="outline"
+                          variant="destructive"
                           size="sm"
-                          onClick={() => handleDeleteProduct(product)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProductToDelete(product);
+                            setDeleteDialogOpen(true);
+                          }}
                         >
                           <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <FileText className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -1130,6 +1152,17 @@ export default function Products() {
           description="Êtes-vous sûr de vouloir supprimer le produit"
           itemName={productToDelete?.name}
           confirmText="Oui, supprimer définitivement"
+          cancelText="Annuler"
+        />
+
+        <ConfirmationDialog
+          open={archiveDialogOpen}
+          onOpenChange={setArchiveDialogOpen}
+          onConfirm={confirmArchiveProduct}
+          title={productToArchive?.status === "active" ? "Archiver le produit" : "Réactiver le produit"}
+          description={`Êtes-vous sûr de vouloir ${productToArchive?.status === "active" ? "archiver" : "réactiver"} le produit`}
+          itemName={productToArchive?.name}
+          confirmText={productToArchive?.status === "active" ? "Oui, archiver" : "Oui, réactiver"}
           cancelText="Annuler"
         />
       </div>
