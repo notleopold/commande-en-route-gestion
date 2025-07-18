@@ -85,6 +85,7 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
       const { data, error } = await supabase
         .from('containers')
         .select('*')
+        .neq('type', 'groupage') // Exclure les groupages
         .order('created_at', { ascending: false });
 
       if (error) throw error;
