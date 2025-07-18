@@ -1,8 +1,9 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Suppliers from "./pages/Suppliers";
@@ -42,7 +43,7 @@ const App = () => (
           <Route path="/clients" element={<Clients />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/transitaires" element={<Transitaires />} />
-          <Route path="/containers" element={<Groupage />} />
+          <Route path="/containers" element={<Navigate to="/groupage" replace />} />
           <Route path="/groupage" element={<Groupage />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />

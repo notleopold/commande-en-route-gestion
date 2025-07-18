@@ -1,4 +1,4 @@
-import { Home, Package, Truck, Container, Users, Settings, ShoppingCart, Ship, Archive, FileText, Boxes, Building2, UserCheck, Trash2 } from "lucide-react";
+import { Home, Package, Truck, Users, Settings, ShoppingCart, Ship, Archive, FileText, Building2, UserCheck, Trash2 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -20,8 +20,7 @@ const menuItems = [
   { title: "Fournisseurs", url: "/suppliers", icon: Building2 },
   { title: "Clients", url: "/clients", icon: UserCheck },
   { title: "Transitaires", url: "/transitaires", icon: Truck },
-  { title: "Conteneurs", url: "/containers", icon: Container },
-  { title: "Groupage", url: "/groupage", icon: Boxes },
+  { title: "Transport Maritime", url: "/groupage", icon: Ship },
   { title: "Rapports", url: "/reports", icon: FileText },
   { title: "Paramètres", url: "/settings", icon: Settings },
 ];
