@@ -14,14 +14,14 @@ import {
 import { useUserRole } from "@/hooks/useUserRole";
 
 const menuItems = [
-  { title: "Dashboard", url: "/", icon: Home },
   { title: "Commandes", url: "/orders", icon: ShoppingCart },
   { title: "Produits", url: "/products", icon: Package },
+  { title: "Transport Maritime", url: "/groupage", icon: Ship },
+  { title: "Rapports", url: "/reports", icon: FileText },
+  { title: "Dashboard", url: "/", icon: Home },
   { title: "Fournisseurs", url: "/suppliers", icon: Building2 },
   { title: "Clients", url: "/clients", icon: UserCheck },
   { title: "Transitaires", url: "/transitaires", icon: Truck },
-  { title: "Transport Maritime", url: "/groupage", icon: Ship },
-  { title: "Rapports", url: "/reports", icon: FileText },
   { title: "Paramètres", url: "/settings", icon: Settings },
 ];
 
