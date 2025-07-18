@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,6 +51,18 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [containerToDelete, setContainerToDelete] = useState<Container | null>(null);
+  const [isBookOrderOpen, setIsBookOrderOpen] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+
+  const bookingForm = useForm({
+    defaultValues: {
+      order_id: "",
+      palettes_booked: "",
+      weight_booked: "",
+      volume_booked: "",
+    },
+  });
 
   const createForm = useForm({
     defaultValues: {
@@ -87,6 +100,7 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
 
   useEffect(() => {
     fetchContainers();
+    fetchOrders();
   }, []);
 
   const fetchContainers = async () => {
@@ -104,6 +118,52 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
       toast.error("Erreur lors du chargement des conteneurs");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          client:clients(name),
+          order_products(*, product:products(*))
+        `)
+        .is('container_id', null);
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  };
+
+  const handleBookOrder = async (data: any) => {
+    if (!selectedContainer || !selectedOrder) return;
+
+    try {
+      const palettes = parseInt(data.palettes_booked);
+      const weight = parseFloat(data.weight_booked);
+      const volume = parseFloat(data.volume_booked);
+
+      // Assign the order to the container
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({ container_id: selectedContainer.id })
+        .eq('id', selectedOrder.id);
+
+      if (orderError) throw orderError;
+
+      toast.success("Commande assignée au conteneur avec succès");
+      setIsBookOrderOpen(false);
+      setSelectedOrder(null);
+      bookingForm.reset();
+      fetchOrders();
+      fetchContainers();
+    } catch (error) {
+      console.error('Error booking order:', error);
+      toast.error("Erreur lors de l'assignation de la commande");
     }
   };
 
@@ -412,6 +472,17 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
                         }}
                       >
                         <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedContainer(container);
+                          setIsBookOrderOpen(true);
+                        }}
+                        disabled={container.status !== 'planning'}
+                      >
+                        <Plus className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
@@ -947,6 +1018,143 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
         confirmText="Oui, supprimer définitivement"
         cancelText="Annuler"
       />
+
+      {/* Dialog pour réserver une commande */}
+      <Dialog open={isBookOrderOpen} onOpenChange={setIsBookOrderOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Assigner une commande au conteneur - {selectedContainer?.number}</DialogTitle>
+          </DialogHeader>
+          {selectedContainer && (
+            <div className="space-y-6">
+              <div className="bg-muted p-4 rounded-lg">
+                <h4 className="font-medium mb-2">Capacité du conteneur</h4>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>Palettes: {selectedContainer.max_pallets}</div>
+                  <div>Poids: {(selectedContainer.max_weight/1000).toFixed(1)}T</div>
+                  <div>Volume: {selectedContainer.max_volume}m³</div>
+                </div>
+              </div>
+
+              <Form {...bookingForm}>
+                <form onSubmit={bookingForm.handleSubmit(handleBookOrder)} className="space-y-4">
+                  <FormField
+                    control={bookingForm.control}
+                    name="order_id"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Commande à assigner</FormLabel>
+                        <Select onValueChange={(value) => {
+                          field.onChange(value);
+                          const order = orders.find(o => o.id === value);
+                          setSelectedOrder(order || null);
+                        }} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Sélectionner une commande" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <ScrollArea className="h-64">
+                              {orders.map(order => {
+                                const orderPalettes = order.order_products?.reduce((sum: number, op: any) => sum + (op.palette_quantity || 0), 0) || 0;
+                                
+                                return (
+                                  <SelectItem 
+                                    key={order.id} 
+                                    value={order.id}
+                                  >
+                                    <div className="flex items-center justify-between w-full">
+                                      <div>
+                                        <div className="font-medium">{order.order_number}</div>
+                                        <div className="text-sm text-muted-foreground">
+                                          {order.supplier} | {orderPalettes} palettes
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </SelectItem>
+                                );
+                              })}
+                            </ScrollArea>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {selectedOrder && (
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <h5 className="font-medium mb-2">Détails de la commande sélectionnée</h5>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>Client: {selectedOrder.client?.name || "Non assigné"}</div>
+                        <div>Fournisseur: {selectedOrder.supplier}</div>
+                        <div>Transitaire: {selectedOrder.current_transitaire}</div>
+                        <div>
+                          Palettes totales: {selectedOrder.order_products?.reduce((sum: number, op: any) => sum + (op.palette_quantity || 0), 0) || 0}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={bookingForm.control}
+                      name="palettes_booked"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Palettes utilisées</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="number" min="1" max={selectedContainer.max_pallets} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={bookingForm.control}
+                      name="weight_booked"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Poids (kg)</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="number" step="0.1" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={bookingForm.control}
+                      name="volume_booked"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Volume (m³)</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="number" step="0.1" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => setIsBookOrderOpen(false)}>
+                      Annuler
+                    </Button>
+                    <Button type="submit" disabled={!selectedOrder}>
+                      Assigner
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
