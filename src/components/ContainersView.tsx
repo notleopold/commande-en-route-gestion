@@ -139,6 +139,15 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
     }
   };
 
+  const canBookOrderInContainer = (order: any, container: Container) => {
+    // Check if same transitaire
+    if (order.current_transitaire !== container.transitaire) {
+      return { canBook: false, reason: `Commande chez ${order.current_transitaire}, conteneur chez ${container.transitaire}` };
+    }
+
+    return { canBook: true, reason: null };
+  };
+
   const handleBookOrder = async (data: any) => {
     if (!selectedContainer || !selectedOrder) return;
 
@@ -1057,12 +1066,14 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
                           <SelectContent>
                             <ScrollArea className="h-64">
                               {orders.map(order => {
+                                const compatibility = canBookOrderInContainer(order, selectedContainer);
                                 const orderPalettes = order.order_products?.reduce((sum: number, op: any) => sum + (op.palette_quantity || 0), 0) || 0;
                                 
                                 return (
                                   <SelectItem 
                                     key={order.id} 
                                     value={order.id}
+                                    disabled={!compatibility.canBook}
                                   >
                                     <div className="flex items-center justify-between w-full">
                                       <div>
@@ -1071,6 +1082,11 @@ export function ContainersView({ transitaires }: ContainersViewProps) {
                                           {order.supplier} | {orderPalettes} palettes
                                         </div>
                                       </div>
+                                      {!compatibility.canBook && (
+                                        <div className="text-xs text-red-600 ml-2">
+                                          {compatibility.reason}
+                                        </div>
+                                      )}
                                     </div>
                                   </SelectItem>
                                 );
