@@ -454,8 +454,8 @@ function Groupage() {
     <Layout title="Transport Maritime">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="groupages">Groupages</TabsTrigger>
           <TabsTrigger value="conteneurs">Conteneurs</TabsTrigger>
+          <TabsTrigger value="groupages">Groupages</TabsTrigger>
         </TabsList>
         
         <TabsContent value="groupages" className="space-y-6">
