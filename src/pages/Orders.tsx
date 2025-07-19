@@ -58,6 +58,8 @@ interface Order {
   payment_date?: string;
   payment_type: string;
   status: string;
+  order_status: string;
+  supplier_payment_status: string;
   total_price?: number;
   current_transitaire?: string;
   container_id?: string;
@@ -82,14 +84,29 @@ interface Order {
 }
 
 const ORDER_STATUSES = [
-  "BDC ENVOYÉ ZIKETRO",
-  "À COMMANDER", 
-  "PAIEMENT EN ATTENTE",
-  "COMMANDÉ > EN LIVRAISON",
-  "PAYÉ (30%)",
-  "PAYÉ (50%)", 
-  "PAYÉ (100%)",
-  "LIVRÉ"
+  "Demande client reçue",
+  "En cours d'analyse par la centrale",
+  "Devis fournisseurs en cours",
+  "Devis validé (interne)",
+  "En attente de paiement fournisseur",
+  "Paiement fournisseur effectué",
+  "Commande validée – En production ou préparation",
+  "Prête à être expédiée / à enlever",
+  "Chez le transitaire",
+  "Plan de chargement confirmé",
+  "En transit (maritime / aérien)",
+  "Arrivée au port / dédouanement",
+  "Livraison finale à la filiale / au client local",
+  "Archivée / Clôturée"
+];
+
+const SUPPLIER_PAYMENT_STATUSES = [
+  "Pas encore demandé",
+  "Demande de virement envoyée",
+  "Virement en attente de validation",
+  "Virement effectué",
+  "Paiement partiel effectué",
+  "Paiement soldé"
 ];
 
 const PAYMENT_TYPES = [
@@ -133,6 +150,8 @@ const Orders = () => {
       payment_date: "",
       payment_type: "",
       status: "",
+      order_status: "",
+      supplier_payment_status: "",
       current_transitaire: "",
       is_received: false,
       transitaire_entry_number: "",
@@ -243,7 +262,9 @@ const Orders = () => {
         order_date: data.order_date,
         payment_date: data.payment_date || null,
         payment_type: data.payment_type,
-        status: data.status,
+        status: data.status || data.order_status || "Demande client reçue",
+        order_status: data.order_status || "Demande client reçue",
+        supplier_payment_status: data.supplier_payment_status || "Pas encore demandé",
         current_transitaire: data.current_transitaire || null,
         is_received: data.is_received || false,
         transitaire_entry_number: data.transitaire_entry_number || null,
@@ -351,16 +372,39 @@ const Orders = () => {
     return containers.filter(container => container.transitaire === order.current_transitaire);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getOrderStatusBadge = (status: string) => {
     const statusStyles: { [key: string]: string } = {
-      "BDC ENVOYÉ ZIKETRO": "bg-blue-100 text-blue-800",
-      "À COMMANDER": "bg-orange-100 text-orange-800",
-      "PAIEMENT EN ATTENTE": "bg-yellow-100 text-yellow-800",
-      "COMMANDÉ > EN LIVRAISON": "bg-purple-100 text-purple-800",
-      "PAYÉ (30%)": "bg-green-100 text-green-600",
-      "PAYÉ (50%)": "bg-green-100 text-green-700",
-      "PAYÉ (100%)": "bg-green-100 text-green-800",
-      "LIVRÉ": "bg-green-100 text-green-900",
+      "Demande client reçue": "bg-blue-100 text-blue-800",
+      "En cours d'analyse par la centrale": "bg-blue-100 text-blue-700",
+      "Devis fournisseurs en cours": "bg-yellow-100 text-yellow-800",
+      "Devis validé (interne)": "bg-green-100 text-green-700",
+      "En attente de paiement fournisseur": "bg-orange-100 text-orange-800",
+      "Paiement fournisseur effectué": "bg-green-100 text-green-800",
+      "Commande validée – En production ou préparation": "bg-blue-100 text-blue-800",
+      "Prête à être expédiée / à enlever": "bg-purple-100 text-purple-800",
+      "Chez le transitaire": "bg-indigo-100 text-indigo-800",
+      "Plan de chargement confirmé": "bg-teal-100 text-teal-800",
+      "En transit (maritime / aérien)": "bg-blue-100 text-blue-900",
+      "Arrivée au port / dédouanement": "bg-amber-100 text-amber-800",
+      "Livraison finale à la filiale / au client local": "bg-green-100 text-green-900",
+      "Archivée / Clôturée": "bg-gray-100 text-gray-800",
+    };
+
+    return (
+      <Badge className={statusStyles[status] || "bg-gray-100 text-gray-800"}>
+        {status}
+      </Badge>
+    );
+  };
+
+  const getSupplierPaymentStatusBadge = (status: string) => {
+    const statusStyles: { [key: string]: string } = {
+      "Pas encore demandé": "bg-gray-100 text-gray-800",
+      "Demande de virement envoyée": "bg-blue-100 text-blue-800",
+      "Virement en attente de validation": "bg-orange-100 text-orange-800",
+      "Virement effectué": "bg-green-100 text-green-800",
+      "Paiement partiel effectué": "bg-yellow-100 text-yellow-800",
+      "Paiement soldé": "bg-green-100 text-green-900",
     };
 
     return (
@@ -521,10 +565,10 @@ const Orders = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={orderForm.control}
-                        name="status"
+                        name="order_status"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Statut</FormLabel>
+                            <FormLabel>Statut de commande</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
@@ -543,6 +587,30 @@ const Orders = () => {
                       />
 
                       <FormField
+                        control={orderForm.control}
+                        name="supplier_payment_status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Statut du paiement fournisseur</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Statut du paiement" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {SUPPLIER_PAYMENT_STATUSES.map(status => (
+                                  <SelectItem key={status} value={status}>{status}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                     </div>
+
+                     <FormField
                         control={orderForm.control}
                         name="current_transitaire"
                         render={({ field }) => (
@@ -564,7 +632,6 @@ const Orders = () => {
                           </FormItem>
                         )}
                       />
-                     </div>
 
                      {/* Conditional fields for transitaire */}
                      {orderForm.watch("current_transitaire") && (
@@ -785,6 +852,7 @@ const Orders = () => {
                    <TableHead>Réception</TableHead>
                    <TableHead>Produits</TableHead>
                    <TableHead>Statut</TableHead>
+                   <TableHead>Paiement fournisseur</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -835,7 +903,8 @@ const Orders = () => {
                         <span className="text-muted-foreground">Aucun produit</span>
                       )}
                     </TableCell>
-                    <TableCell>{getStatusBadge(order.status)}</TableCell>
+                    <TableCell>{getOrderStatusBadge(order.order_status || order.status)}</TableCell>
+                    <TableCell>{getSupplierPaymentStatusBadge(order.supplier_payment_status || "Pas encore demandé")}</TableCell>
                     <TableCell>
                       {order.order_products && order.order_products.length > 0 
                         ? order.order_products.reduce((sum, op) => sum + op.total_price, 0).toFixed(2) + " €"

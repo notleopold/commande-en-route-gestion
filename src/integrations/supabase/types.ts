@@ -437,11 +437,13 @@ export type Database = {
           is_received: boolean | null
           order_date: string
           order_number: string
+          order_status: string | null
           packaging: string | null
           payment_date: string | null
           payment_type: string
           status: string
           supplier: string
+          supplier_payment_status: string | null
           total_price: number | null
           transitaire_entry: string | null
           transitaire_entry_number: string | null
@@ -460,11 +462,13 @@ export type Database = {
           is_received?: boolean | null
           order_date: string
           order_number: string
+          order_status?: string | null
           packaging?: string | null
           payment_date?: string | null
           payment_type: string
           status: string
           supplier: string
+          supplier_payment_status?: string | null
           total_price?: number | null
           transitaire_entry?: string | null
           transitaire_entry_number?: string | null
@@ -483,11 +487,13 @@ export type Database = {
           is_received?: boolean | null
           order_date?: string
           order_number?: string
+          order_status?: string | null
           packaging?: string | null
           payment_date?: string | null
           payment_type?: string
           status?: string
           supplier?: string
+          supplier_payment_status?: string | null
           total_price?: number | null
           transitaire_entry?: string | null
           transitaire_entry_number?: string | null
