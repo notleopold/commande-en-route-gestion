@@ -850,16 +850,6 @@ const Orders = () => {
                         <Button size="sm" variant="outline">
                           <Edit className="h-4 w-4" />
                         </Button>
-                        {order.current_transitaire && getCompatibleContainers(order).length > 0 && !order.container_id && (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => openLinkContainerDialog(order)}
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                          >
-                            <Link className="h-4 w-4" />
-                          </Button>
-                        )}
                         <Button 
                           size="sm" 
                           variant="outline" 
