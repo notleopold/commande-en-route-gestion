@@ -4,10 +4,37 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Edit, Package, Truck, Calendar, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { OrderProductsManager } from "@/components/OrderProductsManager";
+
+const ORDER_STATUSES = [
+  'Demande client reçue',
+  'En cours d\'analyse par la centrale',
+  'Devis fournisseurs en cours',
+  'Devis validé (interne)',
+  'En attente de paiement fournisseur',
+  'Paiement fournisseur effectué',
+  'Commande validée – En production ou préparation',
+  'Prête à être expédiée / à enlever',
+  'Chez le transitaire',
+  'Plan de chargement confirmé',
+  'En transit (maritime / aérien)',
+  'Arrivée au port / dédouanement',
+  'Livraison finale à la filiale / au client local',
+  'Archivée / Clôturée'
+];
+
+const SUPPLIER_PAYMENT_STATUSES = [
+  'Pas encore demandé',
+  'Demande de virement envoyée',
+  'Virement en attente de validation',
+  'Virement effectué',
+  'Paiement partiel effectué',
+  'Paiement soldé'
+];
 
 interface Order {
   id: string;
@@ -16,6 +43,8 @@ interface Order {
   order_date: string;
   status: string;
   payment_type: string;
+  order_status?: string;
+  supplier_payment_status?: string;
   weight?: number;
   volume?: number;
   cartons?: number;
@@ -89,6 +118,38 @@ export default function OrderDetail() {
     }
   };
 
+  const getOrderStatusBadge = (status: string) => {
+    const colorMap = {
+      'Demande client reçue': 'bg-blue-100 text-blue-800',
+      'En cours d\'analyse par la centrale': 'bg-blue-100 text-blue-800',
+      'Devis fournisseurs en cours': 'bg-blue-100 text-blue-800',
+      'Devis validé (interne)': 'bg-blue-100 text-blue-800',
+      'En attente de paiement fournisseur': 'bg-orange-100 text-orange-800',
+      'Paiement fournisseur effectué': 'bg-green-100 text-green-800',
+      'Commande validée – En production ou préparation': 'bg-purple-100 text-purple-800',
+      'Prête à être expédiée / à enlever': 'bg-purple-100 text-purple-800',
+      'Chez le transitaire': 'bg-indigo-100 text-indigo-800',
+      'Plan de chargement confirmé': 'bg-indigo-100 text-indigo-800',
+      'En transit (maritime / aérien)': 'bg-yellow-100 text-yellow-800',
+      'Arrivée au port / dédouanement': 'bg-yellow-100 text-yellow-800',
+      'Livraison finale à la filiale / au client local': 'bg-green-100 text-green-800',
+      'Archivée / Clôturée': 'bg-gray-100 text-gray-800'
+    };
+    return <Badge className={colorMap[status] || 'bg-gray-100 text-gray-800'}>{status}</Badge>;
+  };
+
+  const getSupplierPaymentStatusBadge = (status: string) => {
+    const colorMap = {
+      'Pas encore demandé': 'bg-gray-100 text-gray-800',
+      'Demande de virement envoyée': 'bg-orange-100 text-orange-800',
+      'Virement en attente de validation': 'bg-orange-100 text-orange-800',
+      'Virement effectué': 'bg-green-100 text-green-800',
+      'Paiement partiel effectué': 'bg-yellow-100 text-yellow-800',
+      'Paiement soldé': 'bg-green-100 text-green-800'
+    };
+    return <Badge className={colorMap[status] || 'bg-gray-100 text-gray-800'}>{status}</Badge>;
+  };
+
   const getStatusBadge = (status: string) => {
     const styles = {
       "BDC ENVOYÉ ZIKETRO": "bg-blue-100 text-blue-800",
@@ -101,6 +162,40 @@ export default function OrderDetail() {
       "LIVRÉ": "bg-green-100 text-green-900"
     };
     return <Badge className={styles[status] || "bg-gray-100 text-gray-800"}>{status}</Badge>;
+  };
+
+  const handleOrderStatusChange = async (newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ order_status: newStatus })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      setOrder(prev => prev ? { ...prev, order_status: newStatus } : null);
+      toast.success("Statut de commande mis à jour");
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast.error("Erreur lors de la mise à jour du statut");
+    }
+  };
+
+  const handleSupplierPaymentStatusChange = async (newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ supplier_payment_status: newStatus })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      setOrder(prev => prev ? { ...prev, supplier_payment_status: newStatus } : null);
+      toast.success("Statut de paiement fournisseur mis à jour");
+    } catch (error) {
+      console.error('Error updating supplier payment status:', error);
+      toast.error("Erreur lors de la mise à jour du statut de paiement");
+    }
   };
 
   if (loading) {
@@ -143,6 +238,42 @@ export default function OrderDetail() {
               <div>
                 <label className="text-sm text-muted-foreground">Statut</label>
                 <div>{getStatusBadge(order.status)}</div>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Statut de commande</label>
+                <Select value={order.order_status || ''} onValueChange={handleOrderStatusChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sélectionner un statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ORDER_STATUSES.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {order.order_status && (
+                  <div className="mt-1">{getOrderStatusBadge(order.order_status)}</div>
+                )}
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Statut de paiement fournisseur</label>
+                <Select value={order.supplier_payment_status || ''} onValueChange={handleSupplierPaymentStatusChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sélectionner un statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPLIER_PAYMENT_STATUSES.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {order.supplier_payment_status && (
+                  <div className="mt-1">{getSupplierPaymentStatusBadge(order.supplier_payment_status)}</div>
+                )}
               </div>
               <div>
                 <label className="text-sm text-muted-foreground">Date de commande</label>
