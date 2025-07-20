@@ -110,9 +110,11 @@ const SUPPLIER_PAYMENT_STATUSES = [
 ];
 
 const PAYMENT_TYPES = [
+  "100% à la commande",
+  "50% à la commande",
   "30% à la commande",
-  "50% à la commande", 
-  "100% à la commande"
+  "30% + 70% livraison",
+  "50% + 50% livraison"
 ];
 
 const TRANSITAIRES = [
@@ -475,6 +477,15 @@ const Orders = () => {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
+                                <input 
+                                  type="text" 
+                                  placeholder="Rechercher un client..." 
+                                  className="w-full p-2 border-b mb-2"
+                                  onChange={(e) => {
+                                    const value = e.target.value.toLowerCase();
+                                    // Filter logic handled by search input
+                                  }}
+                                />
                                 {clients.map(client => (
                                   <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
                                 ))}
@@ -498,6 +509,11 @@ const Orders = () => {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
+                                <input 
+                                  type="text" 
+                                  placeholder="Rechercher un fournisseur..." 
+                                  className="w-full p-2 border-b mb-2"
+                                />
                                 {suppliers.map(supplier => (
                                   <SelectItem key={supplier.id} value={supplier.name}>{supplier.name}</SelectItem>
                                 ))}
