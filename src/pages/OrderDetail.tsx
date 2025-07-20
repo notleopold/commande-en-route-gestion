@@ -5,12 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Edit, Package, Truck, Calendar, MapPin } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { ArrowLeft, Edit, Package, Truck, CalendarIcon, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { OrderProductsManager } from "@/components/OrderProductsManager";
+import { cn } from "@/lib/utils";
 const ORDER_STATUSES = ['Demande client reçue', 'En cours d\'analyse par la centrale', 'Devis fournisseurs en cours', 'Devis validé (interne)', 'En attente de paiement fournisseur', 'Paiement fournisseur effectué', 'Commande validée – En production ou préparation', 'Prête à être expédiée / à enlever', 'Chez le transitaire', 'Plan de chargement confirmé', 'En transit (maritime / aérien)', 'Arrivée au port / dédouanement', 'Livraison finale à la filiale / au client local', 'Archivée / Clôturée'];
 const SUPPLIER_PAYMENT_STATUSES = ['Pas encore demandé', 'Demande de virement envoyée', 'Virement en attente de validation', 'Virement effectué', 'Paiement partiel effectué', 'Paiement soldé'];
+const PAYMENT_TYPES = ['Carte bancaire', 'Virement', 'Chèque', 'Espèces', 'Crédit', 'Autre'];
 interface Order {
   id: string;
   order_number: string;
@@ -28,6 +34,7 @@ interface Order {
   is_received?: boolean;
   transitaire_entry_number?: string;
   container_id?: string;
+  client_id?: string;
   clients?: {
     name: string;
   };
@@ -59,11 +66,26 @@ export default function OrderDetail() {
   const navigate = useNavigate();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [clients, setClients] = useState<Array<{id: string, name: string}>>([]);
   useEffect(() => {
     if (id) {
       fetchOrder();
+      fetchClients();
     }
   }, [id]);
+
+  const fetchClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+    }
+  };
   const fetchOrder = async () => {
     try {
       const {
@@ -173,6 +195,57 @@ export default function OrderDetail() {
       toast.error("Erreur lors de la mise à jour du statut de paiement");
     }
   };
+
+  const handleOrderDateChange = async (newDate: Date) => {
+    try {
+      const { error } = await supabase.from('orders').update({
+        order_date: newDate.toISOString().split('T')[0]
+      }).eq('id', id);
+      if (error) throw error;
+      setOrder(prev => prev ? {
+        ...prev,
+        order_date: newDate.toISOString().split('T')[0]
+      } : null);
+      toast.success("Date de commande mise à jour");
+    } catch (error) {
+      console.error('Error updating order date:', error);
+      toast.error("Erreur lors de la mise à jour de la date");
+    }
+  };
+
+  const handlePaymentTypeChange = async (newType: string) => {
+    try {
+      const { error } = await supabase.from('orders').update({
+        payment_type: newType
+      }).eq('id', id);
+      if (error) throw error;
+      setOrder(prev => prev ? {
+        ...prev,
+        payment_type: newType
+      } : null);
+      toast.success("Type de paiement mis à jour");
+    } catch (error) {
+      console.error('Error updating payment type:', error);
+      toast.error("Erreur lors de la mise à jour du type de paiement");
+    }
+  };
+
+  const handleFieldUpdate = async (field: string, value: any) => {
+    try {
+      const { error } = await supabase.from('orders').update({
+        [field]: value
+      }).eq('id', id);
+      if (error) throw error;
+      setOrder(prev => prev ? {
+        ...prev,
+        [field]: value
+      } : null);
+      toast.success("Information mise à jour");
+    } catch (error) {
+      console.error(`Error updating ${field}:`, error);
+      toast.error("Erreur lors de la mise à jour");
+    }
+  };
   if (loading) {
     return <Layout title="Chargement..."><div>Chargement...</div></Layout>;
   }
@@ -238,11 +311,44 @@ export default function OrderDetail() {
               </div>
               <div>
                 <label className="text-sm text-muted-foreground">Date de commande</label>
-                <p className="font-medium">{new Date(order.order_date).toLocaleDateString()}</p>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !order.order_date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {order.order_date ? format(new Date(order.order_date), "PPP") : <span>Sélectionner une date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={order.order_date ? new Date(order.order_date) : undefined}
+                      onSelect={(date) => date && handleOrderDateChange(date)}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
                 <label className="text-sm text-muted-foreground">Type de paiement</label>
-                <p className="font-medium">{order.payment_type}</p>
+                <Select value={order.payment_type || ''} onValueChange={handlePaymentTypeChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sélectionner un type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_TYPES.map(type => 
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
               {order.total_price && <div>
                   <label className="text-sm text-muted-foreground">Prix total</label>
@@ -259,36 +365,64 @@ export default function OrderDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {order.current_transitaire && <div>
-                  <label className="text-sm text-muted-foreground">Transitaire</label>
-                  <p className="font-medium">{order.current_transitaire}</p>
-                </div>}
-              {order.is_received !== undefined && <div>
-                  <label className="text-sm text-muted-foreground">Statut de réception</label>
-                  <p className="font-medium">
-                    {order.is_received ? <span className="text-green-600">✓ Réceptionné</span> : <span className="text-red-600">✗ Non réceptionné</span>}
-                  </p>
-                </div>}
-              {order.transitaire_entry_number && <div>
-                  <label className="text-sm text-muted-foreground">Numéro d'entrée transitaire</label>
-                  <p className="font-medium">{order.transitaire_entry_number}</p>
-                </div>}
-              {order.containers && <div>
-                  <label className="text-sm text-muted-foreground">Conteneur</label>
-                  <p className="font-medium">{order.containers.number} ({order.containers.type})</p>
-                </div>}
-              {order.weight && <div>
-                  <label className="text-sm text-muted-foreground">Poids</label>
-                  <p className="font-medium">{order.weight} kg</p>
-                </div>}
-              {order.volume && <div>
-                  <label className="text-sm text-muted-foreground">Volume</label>
-                  <p className="font-medium">{order.volume} m³</p>
-                </div>}
-              {order.cartons && <div>
-                  <label className="text-sm text-muted-foreground">Cartons</label>
-                  <p className="font-medium">{order.cartons}</p>
-                </div>}
+              <div>
+                <label className="text-sm text-muted-foreground">Transitaire</label>
+                <Input
+                  value={order.current_transitaire || ''}
+                  onChange={(e) => handleFieldUpdate('current_transitaire', e.target.value)}
+                  placeholder="Nom du transitaire"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Statut de réception</label>
+                <Select 
+                  value={order.is_received !== undefined ? order.is_received.toString() : ''} 
+                  onValueChange={(value) => handleFieldUpdate('is_received', value === 'true')}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sélectionner un statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="false">Non réceptionné</SelectItem>
+                    <SelectItem value="true">Réceptionné</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Numéro d'entrée transitaire</label>
+                <Input
+                  value={order.transitaire_entry_number || ''}
+                  onChange={(e) => handleFieldUpdate('transitaire_entry_number', e.target.value)}
+                  placeholder="Numéro d'entrée"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Poids (kg)</label>
+                <Input
+                  type="number"
+                  value={order.weight || ''}
+                  onChange={(e) => handleFieldUpdate('weight', e.target.value ? parseFloat(e.target.value) : null)}
+                  placeholder="Poids en kg"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Volume (m³)</label>
+                <Input
+                  type="number"
+                  value={order.volume || ''}
+                  onChange={(e) => handleFieldUpdate('volume', e.target.value ? parseFloat(e.target.value) : null)}
+                  placeholder="Volume en m³"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground">Cartons</label>
+                <Input
+                  type="number"
+                  value={order.cartons || ''}
+                  onChange={(e) => handleFieldUpdate('cartons', e.target.value ? parseInt(e.target.value) : null)}
+                  placeholder="Nombre de cartons"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -300,7 +434,34 @@ export default function OrderDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {order.clients ? <p className="font-medium">{order.clients.name}</p> : <p className="text-muted-foreground">Aucun client assigné</p>}
+              <div>
+                <label className="text-sm text-muted-foreground">Client assigné</label>
+                <Select 
+                  value={order.client_id || ''} 
+                  onValueChange={(value) => {
+                    handleFieldUpdate('client_id', value || null);
+                    // Update the local state to reflect the change immediately
+                    const selectedClient = clients.find(c => c.id === value);
+                    setOrder(prev => prev ? {
+                      ...prev,
+                      client_id: value || null,
+                      clients: selectedClient ? { name: selectedClient.name } : undefined
+                    } : null);
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sélectionner un client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Aucun client</SelectItem>
+                    {clients.map(client => 
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
         </div>
