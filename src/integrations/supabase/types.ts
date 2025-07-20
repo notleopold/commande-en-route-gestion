@@ -444,9 +444,12 @@ export type Database = {
           status: string
           supplier: string
           supplier_payment_status: string | null
+          total_ht: number | null
           total_price: number | null
+          total_ttc: number | null
           transitaire_entry: string | null
           transitaire_entry_number: string | null
+          tva_rate: number | null
           unit_price: number | null
           updated_at: string
           volume: number | null
@@ -469,9 +472,12 @@ export type Database = {
           status: string
           supplier: string
           supplier_payment_status?: string | null
+          total_ht?: number | null
           total_price?: number | null
+          total_ttc?: number | null
           transitaire_entry?: string | null
           transitaire_entry_number?: string | null
+          tva_rate?: number | null
           unit_price?: number | null
           updated_at?: string
           volume?: number | null
@@ -494,9 +500,12 @@ export type Database = {
           status?: string
           supplier?: string
           supplier_payment_status?: string | null
+          total_ht?: number | null
           total_price?: number | null
+          total_ttc?: number | null
           transitaire_entry?: string | null
           transitaire_entry_number?: string | null
+          tva_rate?: number | null
           unit_price?: number | null
           updated_at?: string
           volume?: number | null

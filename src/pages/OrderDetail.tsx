@@ -16,7 +16,7 @@ import { OrderProductsManager } from "@/components/OrderProductsManager";
 import { cn } from "@/lib/utils";
 const ORDER_STATUSES = ['Demande client reçue', 'En cours d\'analyse par la centrale', 'Devis fournisseurs en cours', 'Devis validé (interne)', 'En attente de paiement fournisseur', 'Paiement fournisseur effectué', 'Commande validée – En production ou préparation', 'Prête à être expédiée / à enlever', 'Chez le transitaire', 'Plan de chargement confirmé', 'En transit (maritime / aérien)', 'Arrivée au port / dédouanement', 'Livraison finale à la filiale / au client local', 'Archivée / Clôturée'];
 const SUPPLIER_PAYMENT_STATUSES = ['Pas encore demandé', 'Demande de virement envoyée', 'Virement en attente de validation', 'Virement effectué', 'Paiement partiel effectué', 'Paiement soldé'];
-const PAYMENT_TYPES = ['Carte bancaire', 'Virement', 'Chèque', 'Espèces', 'Crédit', 'Autre'];
+const PAYMENT_TYPES = ['100% à la commande', '50% à la commande', '30% à la commande', '30% + 70% livraison', '50% + 50% livraison'];
 interface Order {
   id: string;
   order_number: string;
@@ -30,6 +30,9 @@ interface Order {
   volume?: number;
   cartons?: number;
   total_price?: number;
+  total_ht?: number;
+  total_ttc?: number;
+  tva_rate?: number;
   current_transitaire?: string;
   is_received?: boolean;
   transitaire_entry_number?: string;
@@ -350,10 +353,29 @@ export default function OrderDetail() {
                   </SelectContent>
                 </Select>
               </div>
-              {order.total_price && <div>
-                  <label className="text-sm text-muted-foreground">Prix total</label>
-                  <p className="font-medium">{order.total_price.toLocaleString()} €</p>
-                </div>}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-muted-foreground">Total HT</label>
+                  <Input
+                    value={order.total_ht || ''}
+                    onChange={(e) => handleFieldUpdate('total_ht', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    type="number"
+                    step="0.01"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm text-muted-foreground">Total TTC</label>
+                  <Input
+                    value={order.total_ttc || ''}
+                    onChange={(e) => handleFieldUpdate('total_ttc', parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    type="number"
+                    step="0.01"
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -434,7 +456,7 @@ export default function OrderDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div>
+                <div className="grid grid-cols-2 gap-4">
                 <label className="text-sm text-muted-foreground">Client assigné</label>
                 <Select 
                   value={order.client_id || 'none'} 
