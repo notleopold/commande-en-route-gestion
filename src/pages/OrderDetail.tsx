@@ -9,33 +9,8 @@ import { ArrowLeft, Edit, Package, Truck, Calendar, MapPin } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { OrderProductsManager } from "@/components/OrderProductsManager";
-
-const ORDER_STATUSES = [
-  'Demande client reçue',
-  'En cours d\'analyse par la centrale',
-  'Devis fournisseurs en cours',
-  'Devis validé (interne)',
-  'En attente de paiement fournisseur',
-  'Paiement fournisseur effectué',
-  'Commande validée – En production ou préparation',
-  'Prête à être expédiée / à enlever',
-  'Chez le transitaire',
-  'Plan de chargement confirmé',
-  'En transit (maritime / aérien)',
-  'Arrivée au port / dédouanement',
-  'Livraison finale à la filiale / au client local',
-  'Archivée / Clôturée'
-];
-
-const SUPPLIER_PAYMENT_STATUSES = [
-  'Pas encore demandé',
-  'Demande de virement envoyée',
-  'Virement en attente de validation',
-  'Virement effectué',
-  'Paiement partiel effectué',
-  'Paiement soldé'
-];
-
+const ORDER_STATUSES = ['Demande client reçue', 'En cours d\'analyse par la centrale', 'Devis fournisseurs en cours', 'Devis validé (interne)', 'En attente de paiement fournisseur', 'Paiement fournisseur effectué', 'Commande validée – En production ou préparation', 'Prête à être expédiée / à enlever', 'Chez le transitaire', 'Plan de chargement confirmé', 'En transit (maritime / aérien)', 'Arrivée au port / dédouanement', 'Livraison finale à la filiale / au client local', 'Archivée / Clôturée'];
+const SUPPLIER_PAYMENT_STATUSES = ['Pas encore demandé', 'Demande de virement envoyée', 'Virement en attente de validation', 'Virement effectué', 'Paiement partiel effectué', 'Paiement soldé'];
 interface Order {
   id: string;
   order_number: string;
@@ -53,8 +28,13 @@ interface Order {
   is_received?: boolean;
   transitaire_entry_number?: string;
   container_id?: string;
-  clients?: { name: string };
-  containers?: { number: string; type: string };
+  clients?: {
+    name: string;
+  };
+  containers?: {
+    number: string;
+    type: string;
+  };
   order_products?: Array<{
     id?: string;
     product_id: string;
@@ -72,24 +52,24 @@ interface Order {
     };
   }>;
 }
-
 export default function OrderDetail() {
-  const { id } = useParams();
+  const {
+    id
+  } = useParams();
   const navigate = useNavigate();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     if (id) {
       fetchOrder();
     }
   }, [id]);
-
   const fetchOrder = async () => {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
+      const {
+        data,
+        error
+      } = await supabase.from('orders').select(`
           *,
           clients (name),
           containers (number, type),
@@ -103,10 +83,7 @@ export default function OrderDetail() {
             carton_quantity,
             products (id, name, sku, dangerous, imdg_class)
           )
-        `)
-        .eq('id', id)
-        .single();
-
+        `).eq('id', id).single();
       if (error) throw error;
       setOrder(data);
     } catch (error) {
@@ -117,7 +94,6 @@ export default function OrderDetail() {
       setLoading(false);
     }
   };
-
   const getOrderStatusBadge = (status: string) => {
     const colorMap = {
       'Demande client reçue': 'bg-blue-100 text-blue-800',
@@ -137,7 +113,6 @@ export default function OrderDetail() {
     };
     return <Badge className={colorMap[status] || 'bg-gray-100 text-gray-800'}>{status}</Badge>;
   };
-
   const getSupplierPaymentStatusBadge = (status: string) => {
     const colorMap = {
       'Pas encore demandé': 'bg-gray-100 text-gray-800',
@@ -149,7 +124,6 @@ export default function OrderDetail() {
     };
     return <Badge className={colorMap[status] || 'bg-gray-100 text-gray-800'}>{status}</Badge>;
   };
-
   const getStatusBadge = (status: string) => {
     const styles = {
       "BDC ENVOYÉ ZIKETRO": "bg-blue-100 text-blue-800",
@@ -163,51 +137,49 @@ export default function OrderDetail() {
     };
     return <Badge className={styles[status] || "bg-gray-100 text-gray-800"}>{status}</Badge>;
   };
-
   const handleOrderStatusChange = async (newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ order_status: newStatus })
-        .eq('id', id);
-
+      const {
+        error
+      } = await supabase.from('orders').update({
+        order_status: newStatus
+      }).eq('id', id);
       if (error) throw error;
-      
-      setOrder(prev => prev ? { ...prev, order_status: newStatus } : null);
+      setOrder(prev => prev ? {
+        ...prev,
+        order_status: newStatus
+      } : null);
       toast.success("Statut de commande mis à jour");
     } catch (error) {
       console.error('Error updating order status:', error);
       toast.error("Erreur lors de la mise à jour du statut");
     }
   };
-
   const handleSupplierPaymentStatusChange = async (newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ supplier_payment_status: newStatus })
-        .eq('id', id);
-
+      const {
+        error
+      } = await supabase.from('orders').update({
+        supplier_payment_status: newStatus
+      }).eq('id', id);
       if (error) throw error;
-      
-      setOrder(prev => prev ? { ...prev, supplier_payment_status: newStatus } : null);
+      setOrder(prev => prev ? {
+        ...prev,
+        supplier_payment_status: newStatus
+      } : null);
       toast.success("Statut de paiement fournisseur mis à jour");
     } catch (error) {
       console.error('Error updating supplier payment status:', error);
       toast.error("Erreur lors de la mise à jour du statut de paiement");
     }
   };
-
   if (loading) {
     return <Layout title="Chargement..."><div>Chargement...</div></Layout>;
   }
-
   if (!order) {
     return <Layout title="Commande introuvable"><div>Commande introuvable</div></Layout>;
   }
-
-  return (
-    <Layout title={`Commande ${order.order_number}`}>
+  return <Layout title={`Commande ${order.order_number}`}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -235,10 +207,7 @@ export default function OrderDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm text-muted-foreground">Statut</label>
-                <div>{getStatusBadge(order.status)}</div>
-              </div>
+              
               <div>
                 <label className="text-sm text-muted-foreground">Statut de commande</label>
                 <Select value={order.order_status || ''} onValueChange={handleOrderStatusChange}>
@@ -246,16 +215,12 @@ export default function OrderDetail() {
                     <SelectValue placeholder="Sélectionner un statut" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ORDER_STATUSES.map((status) => (
-                      <SelectItem key={status} value={status}>
+                    {ORDER_STATUSES.map(status => <SelectItem key={status} value={status}>
                         {status}
-                      </SelectItem>
-                    ))}
+                      </SelectItem>)}
                   </SelectContent>
                 </Select>
-                {order.order_status && (
-                  <div className="mt-1">{getOrderStatusBadge(order.order_status)}</div>
-                )}
+                {order.order_status && <div className="mt-1">{getOrderStatusBadge(order.order_status)}</div>}
               </div>
               <div>
                 <label className="text-sm text-muted-foreground">Statut de paiement fournisseur</label>
@@ -264,16 +229,12 @@ export default function OrderDetail() {
                     <SelectValue placeholder="Sélectionner un statut" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SUPPLIER_PAYMENT_STATUSES.map((status) => (
-                      <SelectItem key={status} value={status}>
+                    {SUPPLIER_PAYMENT_STATUSES.map(status => <SelectItem key={status} value={status}>
                         {status}
-                      </SelectItem>
-                    ))}
+                      </SelectItem>)}
                   </SelectContent>
                 </Select>
-                {order.supplier_payment_status && (
-                  <div className="mt-1">{getSupplierPaymentStatusBadge(order.supplier_payment_status)}</div>
-                )}
+                {order.supplier_payment_status && <div className="mt-1">{getSupplierPaymentStatusBadge(order.supplier_payment_status)}</div>}
               </div>
               <div>
                 <label className="text-sm text-muted-foreground">Date de commande</label>
@@ -283,12 +244,10 @@ export default function OrderDetail() {
                 <label className="text-sm text-muted-foreground">Type de paiement</label>
                 <p className="font-medium">{order.payment_type}</p>
               </div>
-              {order.total_price && (
-                <div>
+              {order.total_price && <div>
                   <label className="text-sm text-muted-foreground">Prix total</label>
                   <p className="font-medium">{order.total_price.toLocaleString()} €</p>
-                </div>
-              )}
+                </div>}
             </CardContent>
           </Card>
 
@@ -300,54 +259,36 @@ export default function OrderDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {order.current_transitaire && (
-                <div>
+              {order.current_transitaire && <div>
                   <label className="text-sm text-muted-foreground">Transitaire</label>
                   <p className="font-medium">{order.current_transitaire}</p>
-                </div>
-              )}
-              {order.is_received !== undefined && (
-                <div>
+                </div>}
+              {order.is_received !== undefined && <div>
                   <label className="text-sm text-muted-foreground">Statut de réception</label>
                   <p className="font-medium">
-                    {order.is_received ? (
-                      <span className="text-green-600">✓ Réceptionné</span>
-                    ) : (
-                      <span className="text-red-600">✗ Non réceptionné</span>
-                    )}
+                    {order.is_received ? <span className="text-green-600">✓ Réceptionné</span> : <span className="text-red-600">✗ Non réceptionné</span>}
                   </p>
-                </div>
-              )}
-              {order.transitaire_entry_number && (
-                <div>
+                </div>}
+              {order.transitaire_entry_number && <div>
                   <label className="text-sm text-muted-foreground">Numéro d'entrée transitaire</label>
                   <p className="font-medium">{order.transitaire_entry_number}</p>
-                </div>
-              )}
-              {order.containers && (
-                <div>
+                </div>}
+              {order.containers && <div>
                   <label className="text-sm text-muted-foreground">Conteneur</label>
                   <p className="font-medium">{order.containers.number} ({order.containers.type})</p>
-                </div>
-              )}
-              {order.weight && (
-                <div>
+                </div>}
+              {order.weight && <div>
                   <label className="text-sm text-muted-foreground">Poids</label>
                   <p className="font-medium">{order.weight} kg</p>
-                </div>
-              )}
-              {order.volume && (
-                <div>
+                </div>}
+              {order.volume && <div>
                   <label className="text-sm text-muted-foreground">Volume</label>
                   <p className="font-medium">{order.volume} m³</p>
-                </div>
-              )}
-              {order.cartons && (
-                <div>
+                </div>}
+              {order.cartons && <div>
                   <label className="text-sm text-muted-foreground">Cartons</label>
                   <p className="font-medium">{order.cartons}</p>
-                </div>
-              )}
+                </div>}
             </CardContent>
           </Card>
 
@@ -359,21 +300,12 @@ export default function OrderDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {order.clients ? (
-                <p className="font-medium">{order.clients.name}</p>
-              ) : (
-                <p className="text-muted-foreground">Aucun client assigné</p>
-              )}
+              {order.clients ? <p className="font-medium">{order.clients.name}</p> : <p className="text-muted-foreground">Aucun client assigné</p>}
             </CardContent>
           </Card>
         </div>
 
-        <OrderProductsManager 
-          orderId={order.id}
-          orderProducts={order.order_products || []}
-          onUpdate={fetchOrder}
-        />
+        <OrderProductsManager orderId={order.id} orderProducts={order.order_products || []} onUpdate={fetchOrder} />
       </div>
-    </Layout>
-  );
+    </Layout>;
 }
