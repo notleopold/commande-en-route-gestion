@@ -437,14 +437,15 @@ export default function OrderDetail() {
               <div>
                 <label className="text-sm text-muted-foreground">Client assigné</label>
                 <Select 
-                  value={order.client_id || ''} 
+                  value={order.client_id || 'none'} 
                   onValueChange={(value) => {
-                    handleFieldUpdate('client_id', value || null);
+                    const clientId = value === 'none' ? null : value;
+                    handleFieldUpdate('client_id', clientId);
                     // Update the local state to reflect the change immediately
                     const selectedClient = clients.find(c => c.id === value);
                     setOrder(prev => prev ? {
                       ...prev,
-                      client_id: value || null,
+                      client_id: clientId,
                       clients: selectedClient ? { name: selectedClient.name } : undefined
                     } : null);
                   }}
@@ -453,7 +454,7 @@ export default function OrderDetail() {
                     <SelectValue placeholder="Sélectionner un client" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Aucun client</SelectItem>
+                    <SelectItem value="none">Aucun client</SelectItem>
                     {clients.map(client => 
                       <SelectItem key={client.id} value={client.id}>
                         {client.name}
