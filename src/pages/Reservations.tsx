@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 import { LoadingPlan } from "@/components/LoadingPlan";
+import { EditReservationForm } from "@/components/EditReservationForm";
 
 // Types unifiés pour les réservations
 interface Reservation {
@@ -365,6 +366,85 @@ export default function Reservations() {
   const handleLoadingPlan = (reservation: Reservation) => {
     setSelectedReservation(reservation);
     setIsLoadingPlanOpen(true);
+  };
+
+  const handleUpdateReservation = async (data: any) => {
+    if (!selectedReservation) return;
+
+    try {
+      if (selectedReservation.type === 'groupage') {
+        // Mettre à jour le groupage
+        const { error: groupageError } = await supabase
+          .from('groupages')
+          .update({
+            transitaire: data.transitaire,
+            max_space_pallets: data.max_pallets,
+            max_weight: data.max_weight,
+            max_volume: data.max_volume,
+            allows_dangerous_goods: data.dangerous_goods_accepted,
+            departure_date: data.etd || null,
+            arrival_date: data.eta || null,
+            notes: data.notes,
+            status: data.status
+          })
+          .eq('id', selectedReservation.id);
+
+        if (groupageError) throw groupageError;
+
+        // Mettre à jour le conteneur associé
+        const { data: groupageData } = await supabase
+          .from('groupages')
+          .select('container_id')
+          .eq('id', selectedReservation.id)
+          .single();
+
+        if (groupageData?.container_id) {
+          const { error: containerError } = await supabase
+            .from('containers')
+            .update({
+              number: data.container_number,
+              transitaire: data.transitaire,
+              max_pallets: data.max_pallets,
+              max_weight: data.max_weight,
+              max_volume: data.max_volume,
+              dangerous_goods: data.dangerous_goods_accepted,
+              etd: data.etd || null,
+              eta: data.eta || null
+            })
+            .eq('id', groupageData.container_id);
+
+          if (containerError) throw containerError;
+        }
+      } else {
+        // Mettre à jour le conteneur classique
+        const { error } = await supabase
+          .from('containers')
+          .update({
+            number: data.container_number,
+            type: data.type,
+            transitaire: data.transitaire,
+            max_pallets: data.max_pallets,
+            max_weight: data.max_weight,
+            max_volume: data.max_volume,
+            etd: data.etd || null,
+            eta: data.eta || null,
+            departure_port: data.departure_port || null,
+            arrival_port: data.arrival_port || null,
+            port_cutoff: data.port_cutoff || null,
+            dangerous_goods: data.dangerous_goods_accepted,
+            status: data.status
+          })
+          .eq('id', selectedReservation.id);
+
+        if (error) throw error;
+      }
+
+      toast({ title: "Succès", description: "Réservation mise à jour avec succès" });
+      fetchData();
+    } catch (error) {
+      console.error('Error updating reservation:', error);
+      toast({ title: "Erreur", description: "Erreur lors de la mise à jour", variant: "destructive" });
+    }
   };
 
   const handleDeleteReservation = async () => {
@@ -797,112 +877,23 @@ export default function Reservations() {
         <Dialog open={isViewReservationOpen} onOpenChange={setIsViewReservationOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Détails de la réservation - {selectedReservation?.container_number}</DialogTitle>
+              <DialogTitle>Modifier la réservation - {selectedReservation?.container_number}</DialogTitle>
             </DialogHeader>
 
             {selectedReservation && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Numéro de conteneur</Label>
-                    <div className="font-medium">{selectedReservation.container_number}</div>
-                  </div>
-                  <div>
-                    <Label>Type</Label>
-                    <div className="font-medium">{getTypeLabel(selectedReservation.type)}</div>
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Transitaire</Label>
-                  <div className="font-medium">{selectedReservation.transitaire}</div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label>Palettes</Label>
-                    <div className="font-medium">{selectedReservation.available_pallets}/{selectedReservation.max_pallets}</div>
-                  </div>
-                  <div>
-                    <Label>Poids</Label>
-                    <div className="font-medium">{(selectedReservation.available_weight/1000).toFixed(1)}T / {(selectedReservation.max_weight/1000).toFixed(1)}T</div>
-                  </div>
-                  <div>
-                    <Label>Volume</Label>
-                    <div className="font-medium">{selectedReservation.available_volume.toFixed(1)}m³ / {selectedReservation.max_volume}m³</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Date de départ (ETD)</Label>
-                    <div className="font-medium">{selectedReservation.etd ? new Date(selectedReservation.etd).toLocaleDateString() : "Non définie"}</div>
-                  </div>
-                  <div>
-                    <Label>Date d'arrivée (ETA)</Label>
-                    <div className="font-medium">{selectedReservation.eta ? new Date(selectedReservation.eta).toLocaleDateString() : "Non définie"}</div>
-                  </div>
-                </div>
-
-                {selectedReservation.type !== 'groupage' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Port de départ</Label>
-                      <div className="font-medium">{selectedReservation.departure_port || "Non défini"}</div>
-                    </div>
-                    <div>
-                      <Label>Port d'arrivée</Label>
-                      <div className="font-medium">{selectedReservation.arrival_port || "Non défini"}</div>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <Label>Statut</Label>
-                  <div className="mt-1">{getStatusBadge(selectedReservation.status)}</div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="dangerous_goods"
-                    checked={selectedReservation.dangerous_goods_accepted}
-                    disabled
-                  />
-                  <Label htmlFor="dangerous_goods" className="text-sm">
-                    Produits dangereux acceptés
-                  </Label>
-                </div>
-
-                {/* Champ de confirmation - seulement si le plan de chargement n'est pas vide */}
-                {selectedReservation.available_pallets < selectedReservation.max_pallets && (
-                  <div className="border-t pt-4">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <Checkbox
-                        id="confirm_reservation"
-                        // Vous pouvez ajouter la logique de confirmation ici
-                      />
-                      <Label htmlFor="confirm_reservation" className="text-sm font-medium">
-                        Confirmer la réservation
-                      </Label>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Cette option n'est disponible que lorsque le plan de chargement contient des commandes.
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setIsViewReservationOpen(false)}>
-                    Fermer
-                  </Button>
-                  <Button onClick={() => {
-                    setIsViewReservationOpen(false);
-                    handleLoadingPlan(selectedReservation);
-                  }}>
-                    Voir le plan de chargement
-                  </Button>
-                </div>
-              </div>
+              <EditReservationForm
+                reservation={selectedReservation}
+                transitaires={transitaires}
+                onSave={async (data) => {
+                  await handleUpdateReservation(data);
+                  setIsViewReservationOpen(false);
+                }}
+                onCancel={() => setIsViewReservationOpen(false)}
+                onOpenLoadingPlan={() => {
+                  setIsViewReservationOpen(false);
+                  handleLoadingPlan(selectedReservation);
+                }}
+              />
             )}
           </DialogContent>
         </Dialog>
