@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Search, Filter, Eye, Edit, Package, Calculator, AlertTriangle, CheckCircle, XCircle, Clock, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
+import { LoadingPlan } from "@/components/LoadingPlan";
 
 interface Groupage {
   id: string;
@@ -671,7 +672,7 @@ function Groupage() {
                                 size="sm"
                                 onClick={() => handleLoadingPlan(groupage)}
                               >
-                                <Compass className="h-4 w-4" />
+                                <Package className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="outline"
