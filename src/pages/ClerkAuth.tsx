@@ -16,10 +16,10 @@ export default function ClerkAuth() {
         <CardContent className="space-y-4">
           <SignedOut>
             <div className="flex flex-col gap-4">
-              <SignInButton mode="modal">
+              <SignInButton mode="modal" fallbackRedirectUrl="/" forceRedirectUrl="/">
                 <Button className="w-full">Se connecter</Button>
               </SignInButton>
-              <SignUpButton mode="modal">
+              <SignUpButton mode="modal" fallbackRedirectUrl="/" forceRedirectUrl="/">
                 <Button variant="outline" className="w-full">S'inscrire</Button>
               </SignUpButton>
             </div>
