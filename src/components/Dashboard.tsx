@@ -250,7 +250,7 @@ export function Dashboard() {
             <div className="space-y-3">
               {recentContainers.map((container) => (
                 <div key={container.id} className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50"
-                     onClick={() => navigate('/groupage')}>
+                      onClick={() => navigate('/reservations')}>
                   <div className="space-y-1">
                     <p className="font-medium">{container.number}</p>
                     <p className="text-sm text-muted-foreground">{container.type}</p>
@@ -264,7 +264,7 @@ export function Dashboard() {
                   </div>
                 </div>
               ))}
-              <Button variant="outline" className="w-full mt-4" onClick={() => navigate('/groupage')}>
+              <Button variant="outline" className="w-full mt-4" onClick={() => navigate('/reservations')}>
                 Voir tous les conteneurs
               </Button>
             </div>
@@ -280,7 +280,7 @@ export function Dashboard() {
               <Package className="mr-2 h-4 w-4" />
               Nouvelle Commande
             </Button>
-            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/groupage')}>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/reservations')}>
               <Truck className="mr-2 h-4 w-4" />
               Transport Maritime
             </Button>
