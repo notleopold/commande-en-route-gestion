@@ -379,8 +379,11 @@ export default function Reservations() {
           .update({
             transitaire: data.transitaire,
             max_space_pallets: data.max_pallets,
+            available_space_pallets: data.max_pallets, // Reset available pallets
             max_weight: data.max_weight,
+            available_weight: data.max_weight, // Reset available weight
             max_volume: data.max_volume,
+            available_volume: data.max_volume, // Reset available volume
             allows_dangerous_goods: data.dangerous_goods_accepted,
             departure_date: data.etd || null,
             arrival_date: data.eta || null,
@@ -391,7 +394,7 @@ export default function Reservations() {
 
         if (groupageError) throw groupageError;
 
-        // Mettre à jour le conteneur associé
+        // Mettre à jour le conteneur associé si nécessaire
         const { data: groupageData } = await supabase
           .from('groupages')
           .select('container_id')
@@ -409,7 +412,8 @@ export default function Reservations() {
               max_volume: data.max_volume,
               dangerous_goods: data.dangerous_goods_accepted,
               etd: data.etd || null,
-              eta: data.eta || null
+              eta: data.eta || null,
+              status: data.status
             })
             .eq('id', groupageData.container_id);
 
@@ -440,12 +444,13 @@ export default function Reservations() {
       }
 
       toast({ title: "Succès", description: "Réservation mise à jour avec succès" });
-      fetchData();
+      await fetchData(); // Refresh data
     } catch (error) {
       console.error('Error updating reservation:', error);
       toast({ title: "Erreur", description: "Erreur lors de la mise à jour", variant: "destructive" });
     }
   };
+
 
   const handleDeleteReservation = async () => {
     if (!reservationToDelete) return;
