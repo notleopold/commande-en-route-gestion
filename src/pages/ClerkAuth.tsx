@@ -1,6 +1,7 @@
-import { SignIn, SignUp } from '@clerk/clerk-react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import React from 'react'
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 
 export default function ClerkAuth() {
   return (
@@ -12,37 +13,23 @@ export default function ClerkAuth() {
             Connectez-vous à votre compte ou créez-en un nouveau
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Connexion</TabsTrigger>
-              <TabsTrigger value="signup">Inscription</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin" className="mt-6">
-              <SignIn 
-                fallbackRedirectUrl="/"
-                signUpUrl="#signup"
-                appearance={{
-                  elements: {
-                    rootBox: "w-full",
-                    card: "shadow-none border-0 bg-transparent",
-                  }
-                }}
-              />
-            </TabsContent>
-            <TabsContent value="signup" className="mt-6">
-              <SignUp 
-                fallbackRedirectUrl="/"
-                signInUrl="#signin"
-                appearance={{
-                  elements: {
-                    rootBox: "w-full",
-                    card: "shadow-none border-0 bg-transparent",
-                  }
-                }}
-              />
-            </TabsContent>
-          </Tabs>
+        <CardContent className="space-y-4">
+          <SignedOut>
+            <div className="flex flex-col gap-4">
+              <SignInButton mode="modal">
+                <Button className="w-full">Se connecter</Button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <Button variant="outline" className="w-full">S'inscrire</Button>
+              </SignUpButton>
+            </div>
+          </SignedOut>
+          <SignedIn>
+            <div className="text-center">
+              <p className="mb-4">Vous êtes connecté !</p>
+              <UserButton />
+            </div>
+          </SignedIn>
         </CardContent>
       </Card>
     </div>

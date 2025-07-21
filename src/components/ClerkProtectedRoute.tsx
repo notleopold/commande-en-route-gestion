@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import React, { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import { Loader2 } from "lucide-react";
