@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -722,31 +722,63 @@ const Orders = () => {
                           </Button>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-3">
-                          <FormField
-                            control={orderForm.control}
-                            name={`products.${index}.product_id`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Produit</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Sélectionner un produit" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {products.map(product => (
-                                      <SelectItem key={product.id} value={product.id}>
-                                        {product.name} - {product.sku}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                         <div className="grid grid-cols-2 gap-3">
+                           <FormField
+                             control={orderForm.control}
+                             name={`products.${index}.product_id`}
+                             render={({ field }) => {
+                               const selectedSupplier = orderForm.watch("supplier");
+                               const [productSearch, setProductSearch] = useState("");
+                               
+                               const filteredProducts = useMemo(() => {
+                                 return products.filter(product => {
+                                   const matchesSupplier = !selectedSupplier || product.suppliers?.includes(selectedSupplier);
+                                   const matchesSearch = !productSearch || 
+                                     product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+                                     product.sku.toLowerCase().includes(productSearch.toLowerCase());
+                                   return matchesSupplier && matchesSearch;
+                                 });
+                               }, [products, selectedSupplier, productSearch]);
+
+                               return (
+                                 <FormItem>
+                                   <FormLabel>Produit</FormLabel>
+                                   <Select onValueChange={field.onChange} value={field.value}>
+                                     <FormControl>
+                                       <SelectTrigger>
+                                         <SelectValue placeholder="Sélectionner un produit" />
+                                       </SelectTrigger>
+                                     </FormControl>
+                                     <SelectContent>
+                                       <div className="p-2 border-b">
+                                         <Input
+                                           placeholder="Rechercher par nom ou SKU..."
+                                           value={productSearch}
+                                           onChange={(e) => setProductSearch(e.target.value)}
+                                           className="h-8"
+                                         />
+                                       </div>
+                                       {filteredProducts.length === 0 ? (
+                                         <div className="p-2 text-sm text-muted-foreground">
+                                           {!selectedSupplier ? "Veuillez d'abord sélectionner un fournisseur" : "Aucun produit trouvé"}
+                                         </div>
+                                       ) : (
+                                         filteredProducts.map(product => (
+                                           <SelectItem key={product.id} value={product.id}>
+                                             <div className="flex flex-col">
+                                               <span className="font-medium">{product.name}</span>
+                                               <span className="text-sm text-muted-foreground">SKU: {product.sku}</span>
+                                             </div>
+                                           </SelectItem>
+                                         ))
+                                       )}
+                                     </SelectContent>
+                                   </Select>
+                                   <FormMessage />
+                                 </FormItem>
+                               );
+                             }}
+                           />
 
                           <FormField
                             control={orderForm.control}

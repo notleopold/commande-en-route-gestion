@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,9 +51,10 @@ interface OrderProductsManagerProps {
   orderId: string;
   orderProducts: OrderProduct[];
   onUpdate: () => void;
+  supplierName?: string;
 }
 
-export function OrderProductsManager({ orderId, orderProducts, onUpdate }: OrderProductsManagerProps) {
+export function OrderProductsManager({ orderId, orderProducts, onUpdate, supplierName }: OrderProductsManagerProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -62,6 +63,7 @@ export function OrderProductsManager({ orderId, orderProducts, onUpdate }: Order
   const [paletteQuantity, setPaletteQuantity] = useState<number>(0);
   const [cartonQuantity, setCartonQuantity] = useState<number>(0);
   const [loading, setLoading] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
 
   useEffect(() => {
     fetchProducts();
@@ -88,6 +90,16 @@ export function OrderProductsManager({ orderId, orderProducts, onUpdate }: Order
       toast.error("Erreur lors du chargement des produits");
     }
   };
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesSupplier = !supplierName || product.suppliers?.includes(supplierName);
+      const matchesSearch = !productSearch || 
+        product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+        product.sku.toLowerCase().includes(productSearch.toLowerCase());
+      return matchesSupplier && matchesSearch;
+    });
+  }, [products, supplierName, productSearch]);
 
   const calculateQuantities = () => {
     if (!selectedProduct) return;
@@ -186,28 +198,42 @@ export function OrderProductsManager({ orderId, orderProducts, onUpdate }: Order
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="product">Produit</Label>
-                  <Select value={selectedProduct?.id || ""} onValueChange={(value) => {
-                    const product = products.find(p => p.id === value);
-                    setSelectedProduct(product || null);
-                  }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un produit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <ScrollArea className="h-64">
-                        {products.map(product => (
-                          <SelectItem key={product.id} value={product.id}>
-                            <div className="flex flex-col">
-                              <span className="font-medium">{product.name}</span>
-                              <span className="text-sm text-muted-foreground">
-                                SKU: {product.sku} | {product.cost}€/{product.unit}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </ScrollArea>
-                    </SelectContent>
-                  </Select>
+                   <Select value={selectedProduct?.id || ""} onValueChange={(value) => {
+                     const product = filteredProducts.find(p => p.id === value);
+                     setSelectedProduct(product || null);
+                   }}>
+                     <SelectTrigger>
+                       <SelectValue placeholder="Sélectionner un produit" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <div className="p-2 border-b">
+                         <Input
+                           placeholder="Rechercher par nom ou SKU..."
+                           value={productSearch}
+                           onChange={(e) => setProductSearch(e.target.value)}
+                           className="h-8"
+                         />
+                       </div>
+                       <ScrollArea className="h-64">
+                         {filteredProducts.length === 0 ? (
+                           <div className="p-2 text-sm text-muted-foreground">
+                             {!supplierName ? "Aucun fournisseur défini pour cette commande" : "Aucun produit trouvé"}
+                           </div>
+                         ) : (
+                           filteredProducts.map(product => (
+                             <SelectItem key={product.id} value={product.id}>
+                               <div className="flex flex-col">
+                                 <span className="font-medium">{product.name}</span>
+                                 <span className="text-sm text-muted-foreground">
+                                   SKU: {product.sku} | {product.cost}€/{product.unit}
+                                 </span>
+                               </div>
+                             </SelectItem>
+                           ))
+                         )}
+                       </ScrollArea>
+                     </SelectContent>
+                   </Select>
                 </div>
 
                 {selectedProduct && (

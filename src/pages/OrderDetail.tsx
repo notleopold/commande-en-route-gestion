@@ -485,7 +485,7 @@ export default function OrderDetail() {
           </Card>
         </div>
 
-        <OrderProductsManager orderId={order.id} orderProducts={order.order_products || []} onUpdate={fetchOrder} />
+        <OrderProductsManager orderId={order.id} orderProducts={order.order_products || []} onUpdate={fetchOrder} supplierName={order.supplier} />
       </div>
     </Layout>;
 }
