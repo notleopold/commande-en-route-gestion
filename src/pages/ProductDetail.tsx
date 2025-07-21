@@ -186,13 +186,34 @@ export default function ProductDetail() {
     }
   };
 
-  const addNewCategory = () => {
+  const addNewCategory = async () => {
     if (newCategory.trim() && !categories.includes(newCategory.trim())) {
       const trimmedCategory = newCategory.trim();
-      const updatedCategories = [...categories, trimmedCategory].sort();
-      setCategories(updatedCategories);
-      form.setValue('category', trimmedCategory);
-      setNewCategory("");
+      
+      // Update the current product immediately to save the category
+      try {
+        const currentFormData = form.getValues();
+        const { error } = await supabase
+          .from('products')
+          .update({ ...currentFormData, category: trimmedCategory })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        // Update local state
+        const updatedCategories = [...categories, trimmedCategory].sort();
+        setCategories(updatedCategories);
+        form.setValue('category', trimmedCategory);
+        setNewCategory("");
+        
+        toast.success(`Catégorie "${trimmedCategory}" créée et sauvegardée`);
+        
+        // Refresh categories to make sure it's available app-wide
+        fetchCategories();
+      } catch (error) {
+        console.error('Error saving new category:', error);
+        toast.error("Erreur lors de la sauvegarde de la nouvelle catégorie");
+      }
     }
   };
 
@@ -343,10 +364,15 @@ export default function ProductDetail() {
                           placeholder="Nouvelle catégorie"
                           value={newCategory}
                           onChange={(e) => setNewCategory(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addNewCategory())}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              addNewCategory();
+                            }
+                          }}
                         />
                         <Button type="button" onClick={addNewCategory} size="sm">
-                          Ajouter
+                          Créer & Sauvegarder
                         </Button>
                       </div>
                       
