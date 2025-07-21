@@ -369,7 +369,13 @@ export default function Reservations() {
   };
 
   const handleUpdateReservation = async (data: any) => {
-    if (!selectedReservation) return;
+    console.log('Reservations - handleUpdateReservation called with data:', data);
+    console.log('Reservations - selectedReservation:', selectedReservation);
+    
+    if (!selectedReservation) {
+      console.error('Reservations - No selectedReservation found');
+      return;
+    }
 
     try {
       if (selectedReservation.type === 'groupage') {

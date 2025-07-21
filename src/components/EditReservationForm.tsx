@@ -83,12 +83,18 @@ export function EditReservationForm({
   const hasLoadingPlan = reservation.available_pallets < reservation.max_pallets;
 
   const handleSubmit = async (data: any) => {
-    await onSave({
-      ...data,
-      max_pallets: parseInt(data.max_pallets),
-      max_weight: parseFloat(data.max_weight),
-      max_volume: parseFloat(data.max_volume),
-    });
+    console.log('EditReservationForm - handleSubmit called with data:', data);
+    try {
+      await onSave({
+        ...data,
+        max_pallets: parseInt(data.max_pallets),
+        max_weight: parseFloat(data.max_weight),
+        max_volume: parseFloat(data.max_volume),
+      });
+      console.log('EditReservationForm - onSave completed successfully');
+    } catch (error) {
+      console.error('EditReservationForm - Error in handleSubmit:', error);
+    }
   };
 
   return (
