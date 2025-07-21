@@ -526,7 +526,7 @@ export default function ProductDetail() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Package className="h-5 w-5" />
-                  Emballage - Paquet
+                  Paquet
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
