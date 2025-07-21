@@ -730,15 +730,18 @@ const Orders = () => {
                                const selectedSupplier = orderForm.watch("supplier");
                                const [productSearch, setProductSearch] = useState("");
                                
-                               const filteredProducts = useMemo(() => {
-                                 return products.filter(product => {
-                                   const matchesSupplier = !selectedSupplier || product.suppliers?.includes(selectedSupplier);
-                                   const matchesSearch = !productSearch || 
-                                     product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-                                     product.sku.toLowerCase().includes(productSearch.toLowerCase());
-                                   return matchesSupplier && matchesSearch;
-                                 });
-                               }, [products, selectedSupplier, productSearch]);
+                                const filteredProducts = useMemo(() => {
+                                  return products.filter(product => {
+                                    const matchesSupplier = !selectedSupplier || 
+                                      product.suppliers?.some(supplier => 
+                                        supplier.toLowerCase() === selectedSupplier.toLowerCase()
+                                      );
+                                    const matchesSearch = !productSearch || 
+                                      product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+                                      product.sku.toLowerCase().includes(productSearch.toLowerCase());
+                                    return matchesSupplier && matchesSearch;
+                                  });
+                                }, [products, selectedSupplier, productSearch]);
 
                                return (
                                  <FormItem>

@@ -93,7 +93,10 @@ export function OrderProductsManager({ orderId, orderProducts, onUpdate, supplie
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
-      const matchesSupplier = !supplierName || product.suppliers?.includes(supplierName);
+      const matchesSupplier = !supplierName || 
+        product.suppliers?.some(supplier => 
+          supplier.toLowerCase() === supplierName.toLowerCase()
+        );
       const matchesSearch = !productSearch || 
         product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
         product.sku.toLowerCase().includes(productSearch.toLowerCase());
