@@ -377,9 +377,9 @@ export default function ProductDetail() {
                       </div>
                       
                       {/* Liste des catégories existantes avec boutons de suppression */}
-                      {categories.length > 0 && (
-                        <div className="mt-3">
-                          <Label className="text-sm text-muted-foreground">Catégories existantes :</Label>
+                      <div className="mt-3">
+                        <Label className="text-sm text-muted-foreground">Catégories existantes :</Label>
+                        {categories.length > 0 ? (
                           <div className="flex flex-wrap gap-2 mt-1">
                             {categories.map((category) => (
                               <div key={category} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-md text-sm">
@@ -396,8 +396,10 @@ export default function ProductDetail() {
                               </div>
                             ))}
                           </div>
-                        </div>
-                      )}
+                        ) : (
+                          <p className="text-sm text-muted-foreground mt-1">Aucune catégorie disponible</p>
+                        )}
+                      </div>
                       
                       <FormMessage />
                     </FormItem>
