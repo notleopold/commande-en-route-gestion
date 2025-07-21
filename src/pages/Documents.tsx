@@ -51,6 +51,11 @@ interface UploadProgress {
   status: 'uploading' | 'completed' | 'error';
 }
 
+interface RenameState {
+  fileId: string | null;
+  newName: string;
+}
+
 const MIME_TYPE_CATEGORIES = {
   image: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
   document: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'],
@@ -72,6 +77,7 @@ export default function Documents() {
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [renameState, setRenameState] = useState<RenameState>({ fileId: null, newName: "" });
   const { toast } = useToast();
 
   const fetchFiles = useCallback(async () => {
@@ -172,14 +178,25 @@ export default function Documents() {
 
     for (const file of uploadedFiles) {
       try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        // Check if file with same name already exists
+        const { data: existingFiles } = await supabase.storage
+          .from('documents')
+          .list('', { search: file.name });
+        
+        let fileName = file.name;
+        if (existingFiles && existingFiles.length > 0) {
+          // Add timestamp to avoid conflicts
+          const fileExt = file.name.split('.').pop();
+          const baseName = file.name.replace(`.${fileExt}`, '');
+          fileName = `${baseName}_${Date.now()}.${fileExt}`;
+        }
         
         const { error: uploadError } = await supabase.storage
           .from('documents')
           .upload(fileName, file, {
             cacheControl: '3600',
-            upsert: false
+            upsert: false,
+            contentType: file.type
           });
 
         if (uploadError) throw uploadError;
@@ -248,6 +265,10 @@ export default function Documents() {
   };
 
   const handleDelete = async (file: FileItem) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer "${file.name}" ?`)) {
+      return;
+    }
+
     try {
       const { error } = await supabase.storage
         .from('documents')
@@ -266,6 +287,56 @@ export default function Documents() {
       toast({
         title: "Erreur",
         description: "Erreur lors de la suppression",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRename = async (file: FileItem, newName: string) => {
+    if (!newName.trim() || newName === file.name) return;
+
+    // Ensure the file keeps its extension
+    const originalExt = file.name.split('.').pop();
+    const newExt = newName.split('.').pop();
+    const finalName = newExt === originalExt ? newName : `${newName.replace(/\.[^/.]+$/, "")}.${originalExt}`;
+
+    try {
+      // Download the file
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('documents')
+        .download(file.name);
+
+      if (downloadError) throw downloadError;
+
+      // Upload with new name
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(finalName, fileData, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.metadata.mimetype
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Delete old file
+      const { error: deleteError } = await supabase.storage
+        .from('documents')
+        .remove([file.name]);
+
+      if (deleteError) throw deleteError;
+
+      toast({
+        title: "Succès",
+        description: "Fichier renommé avec succès",
+      });
+      
+      await fetchFiles();
+    } catch (error) {
+      console.error('Rename error:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors du renommage",
         variant: "destructive",
       });
     }
@@ -320,7 +391,15 @@ export default function Documents() {
     }
     
     if (mimetype === 'application/pdf') {
-      return <iframe src={publicUrl} className="w-full h-96" title={file.name} />;
+      return (
+        <iframe 
+          src={publicUrl} 
+          className="w-full h-96 border-0" 
+          title={file.name}
+          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+          style={{ minHeight: '600px' }}
+        />
+      );
     }
     
     if (mimetype.startsWith('video/')) {
@@ -516,7 +595,33 @@ export default function Documents() {
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     {getFileIcon(file.metadata.mimetype)}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{file.name}</p>
+                      {renameState.fileId === file.id ? (
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            value={renameState.newName}
+                            onChange={(e) => setRenameState(prev => ({ ...prev, newName: e.target.value }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleRename(file, renameState.newName);
+                                setRenameState({ fileId: null, newName: "" });
+                              }
+                              if (e.key === 'Escape') {
+                                setRenameState({ fileId: null, newName: "" });
+                              }
+                            }}
+                            onBlur={() => {
+                              if (renameState.newName.trim()) {
+                                handleRename(file, renameState.newName);
+                              }
+                              setRenameState({ fileId: null, newName: "" });
+                            }}
+                            className="text-sm"
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <p className="font-medium truncate">{file.name}</p>
+                      )}
                       <div className="flex gap-4 text-sm text-muted-foreground">
                         <span>{formatFileSize(file.size)}</span>
                         <span>{formatDate(file.created_at)}</span>
@@ -539,6 +644,15 @@ export default function Documents() {
                         <Eye className="h-4 w-4" />
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setRenameState({ fileId: file.id, newName: file.name });
+                      }}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -571,9 +685,33 @@ export default function Documents() {
                   </div>
                   
                   <div>
-                    <p className="font-medium truncate text-sm" title={file.name}>
-                      {file.name}
-                    </p>
+                    {renameState.fileId === file.id ? (
+                      <Input
+                        value={renameState.newName}
+                        onChange={(e) => setRenameState(prev => ({ ...prev, newName: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleRename(file, renameState.newName);
+                            setRenameState({ fileId: null, newName: "" });
+                          }
+                          if (e.key === 'Escape') {
+                            setRenameState({ fileId: null, newName: "" });
+                          }
+                        }}
+                        onBlur={() => {
+                          if (renameState.newName.trim()) {
+                            handleRename(file, renameState.newName);
+                          }
+                          setRenameState({ fileId: null, newName: "" });
+                        }}
+                        className="text-sm mb-1"
+                        autoFocus
+                      />
+                    ) : (
+                      <p className="font-medium truncate text-sm mb-1" title={file.name}>
+                        {file.name}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       {formatFileSize(file.size)}
                     </p>
@@ -596,6 +734,16 @@ export default function Documents() {
                         <Eye className="h-3 w-3" />
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => {
+                        setRenameState({ fileId: file.id, newName: file.name });
+                      }}
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
