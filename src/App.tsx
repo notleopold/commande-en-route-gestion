@@ -15,6 +15,7 @@ import Products from "./pages/Products";
 import Clients from "./pages/Clients";
 import Orders from "./pages/Orders";
 import Groupage from "./pages/Groupage";
+import Documents from "./pages/Documents";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
@@ -45,6 +46,7 @@ const App = () => (
           <Route path="/transitaires" element={<Transitaires />} />
           <Route path="/containers" element={<Navigate to="/groupage" replace />} />
           <Route path="/groupage" element={<Groupage />} />
+          <Route path="/documents" element={<Documents />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
