@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Package, Save } from "lucide-react";
+import { ArrowLeft, Package, Save, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -190,6 +190,37 @@ export default function ProductDetail() {
     }
   };
 
+  const removeCategory = async (categoryToRemove: string) => {
+    try {
+      // Check if any products use this category
+      const { data: productsWithCategory, error: checkError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('category', categoryToRemove);
+
+      if (checkError) throw checkError;
+
+      if (productsWithCategory && productsWithCategory.length > 0) {
+        toast.error(`Impossible de supprimer la catégorie "${categoryToRemove}" car ${productsWithCategory.length} produit(s) l'utilisent encore.`);
+        return;
+      }
+
+      // Remove from local state
+      const updatedCategories = categories.filter(cat => cat !== categoryToRemove);
+      setCategories(updatedCategories);
+      
+      // If the current product had this category, clear it
+      if (form.getValues('category') === categoryToRemove) {
+        form.setValue('category', '');
+      }
+      
+      toast.success(`Catégorie "${categoryToRemove}" supprimée avec succès`);
+    } catch (error) {
+      console.error('Error removing category:', error);
+      toast.error("Erreur lors de la suppression de la catégorie");
+    }
+  };
+
   const onSubmit = async (data: Product) => {
     setSaving(true);
     try {
@@ -310,6 +341,30 @@ export default function ProductDetail() {
                           Ajouter
                         </Button>
                       </div>
+                      
+                      {/* Liste des catégories existantes avec boutons de suppression */}
+                      {categories.length > 0 && (
+                        <div className="mt-3">
+                          <Label className="text-sm text-muted-foreground">Catégories existantes :</Label>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {categories.map((category) => (
+                              <div key={category} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-md text-sm">
+                                <span>{category}</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                                  onClick={() => removeCategory(category)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
                       <FormMessage />
                     </FormItem>
                   )}
