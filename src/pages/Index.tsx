@@ -1,22 +1,14 @@
 import { Layout } from "@/components/Layout";
 import { Dashboard } from "@/components/Dashboard";
-import { OrganizationOnboarding } from "@/components/OrganizationOnboarding";
-import { useOrganizationOnboarding } from "@/hooks/useOrganizationOnboarding";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 const Index = () => {
-  const { showOnboarding, completeOnboarding } = useOrganizationOnboarding();
-
   return (
-    <>
-      <Layout title="Tableau de Bord">
+    <ProtectedRoute>
+      <Layout title="Dashboard - Vue d'ensemble">
         <Dashboard />
       </Layout>
-      
-      <OrganizationOnboarding 
-        open={showOnboarding}
-        onComplete={completeOnboarding}
-      />
-    </>
+    </ProtectedRoute>
   );
 };
 
