@@ -96,7 +96,7 @@ const ORDER_STATUSES = [
   "Plan de chargement confirmé",
   "En transit (maritime / aérien)",
   "Arrivée au port / dédouanement",
-  "Livraison finale à la filiale / au client local",
+  "ALivraison finale à la filiale / au client local",
   "Archivée / Clôturée"
 ];
 
