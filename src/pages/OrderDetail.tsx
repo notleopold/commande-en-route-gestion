@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { ArrowLeft, Edit, Package, Truck, CalendarIcon, MapPin } from "lucide-react";
+import { ArrowLeft, Package, Truck, CalendarIcon, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { OrderProductsManager } from "@/components/OrderProductsManager";
@@ -263,15 +263,11 @@ export default function OrderDetail() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Retour
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold">{order.order_number}</h1>
-              <p className="text-muted-foreground">Fournisseur: {order.supplier}</p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold">{order.order_number}</h1>
+            <p className="text-muted-foreground">Fournisseur: {order.supplier}</p>
           </div>
-          <Button onClick={() => navigate(`/orders/${order.id}/edit`)}>
-            <Edit className="h-4 w-4 mr-2" />
-            Modifier
-          </Button>
+        </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
