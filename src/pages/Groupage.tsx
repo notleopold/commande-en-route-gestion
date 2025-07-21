@@ -100,6 +100,7 @@ function Groupage() {
   const [selectedGroupage, setSelectedGroupage] = useState<Groupage | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isLoadingPlanOpen, setIsLoadingPlanOpen] = useState(false);
   const [groupageToDelete, setGroupageToDelete] = useState<Groupage | null>(null);
   const [isEditGroupageOpen, setIsEditGroupageOpen] = useState(false);
   const [editingGroupage, setEditingGroupage] = useState<Groupage | null>(null);
@@ -409,6 +410,11 @@ function Groupage() {
     setDeleteDialogOpen(true);
   };
 
+  const handleLoadingPlan = (groupage: Groupage) => {
+    setSelectedGroupage(groupage);
+    setIsLoadingPlanOpen(true);
+  };
+
   const confirmDeleteGroupage = async () => {
     if (!groupageToDelete) return;
 
@@ -660,17 +666,24 @@ function Groupage() {
                              >
                                <Edit className="h-4 w-4" />
                              </Button>
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={() => {
-                                 setSelectedGroupage(groupage);
-                                 setIsBookOrderOpen(true);
-                               }}
-                               disabled={groupage.status !== 'available'}
-                             >
-                               <Plus className="h-4 w-4" />
-                             </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleLoadingPlan(groupage)}
+                              >
+                                <Compass className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedGroupage(groupage);
+                                  setIsBookOrderOpen(true);
+                                }}
+                                disabled={groupage.status !== 'available'}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
                              <Button
                                variant="outline"
                                size="sm"
@@ -1310,6 +1323,13 @@ function Groupage() {
           <ContainersView transitaires={transitaires} />
         </TabsContent>
       </Tabs>
+
+      <LoadingPlan
+        isOpen={isLoadingPlanOpen}
+        onClose={() => setIsLoadingPlanOpen(false)}
+        groupage={selectedGroupage}
+        type="groupage"
+      />
     </Layout>
   );
 }

@@ -19,6 +19,7 @@ import {
   XCircle, PlusCircle, MinusCircle, Trash2, Link, Unlink
 } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
+import { LoadingPlan } from "@/components/LoadingPlan";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { checkContainerCompatibility } from "@/lib/imdg-compatibility";
@@ -222,24 +223,6 @@ const [containers, setContainers] = useState<ContainerData[]>([]);
       event.stopPropagation();
     }
     setSelectedContainer(container);
-    
-    // Use real orders from database
-    if (orders && orders.length > 0) {
-      // Get available orders that match this container's transitaire and are not already assigned
-      const available = orders.filter(order => 
-        order.current_transitaire === container.transitaire && 
-        !order.container_id
-      );
-      
-      // Get orders already assigned to this container
-      const assigned = orders.filter(order => 
-        order.container_id === container.id
-      );
-      
-      setAvailableOrders(available);
-      setContainerOrders(assigned);
-    }
-    
     setIsLoadingPlanOpen(true);
   };
 
@@ -1369,6 +1352,13 @@ const [containers, setContainers] = useState<ContainerData[]>([]);
           description={`Êtes-vous sûr de vouloir supprimer le conteneur ${containerToDelete?.number} ? Cette action ne peut pas être annulée.`}
           confirmText="Supprimer"
           cancelText="Annuler"
+        />
+        
+        <LoadingPlan
+          isOpen={isLoadingPlanOpen}
+          onClose={() => setIsLoadingPlanOpen(false)}
+          container={selectedContainer}
+          type="container"
         />
       </div>
     </Layout>
