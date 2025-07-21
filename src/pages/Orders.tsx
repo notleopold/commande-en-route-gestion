@@ -255,10 +255,29 @@ const Orders = () => {
     }
   };
 
+  const generateOrderNumber = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-number', {
+        body: { entityType: 'order' }
+      });
+
+      if (error) throw error;
+      return data.number;
+    } catch (error) {
+      console.error('Error generating order number:', error);
+      toast.error("Erreur lors de la génération du numéro de commande");
+      return null;
+    }
+  };
+
   const handleSubmitOrder = async (data: any) => {
     try {
+      // Générer le numéro automatiquement
+      const orderNumber = await generateOrderNumber();
+      if (!orderNumber) return;
+
       const orderData = {
-        order_number: `CMD-${Date.now()}`,
+        order_number: orderNumber,
         client_id: data.client_id || null,
         supplier: data.supplier,
         order_date: data.order_date,

@@ -372,6 +372,33 @@ export type Database = {
           },
         ]
       }
+      number_counters: {
+        Row: {
+          created_at: string
+          current_number: number
+          entity_type: string
+          id: string
+          prefix: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_number?: number
+          entity_type: string
+          id?: string
+          prefix?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_number?: number
+          entity_type?: string
+          id?: string
+          prefix?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_products: {
         Row: {
           carton_quantity: number | null
@@ -988,6 +1015,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_next_number: {
+        Args: { entity_type_param: string }
+        Returns: string
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

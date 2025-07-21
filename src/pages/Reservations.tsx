@@ -107,7 +107,6 @@ export default function Reservations() {
   // Forms
   const createReservationForm = useForm({
     defaultValues: {
-      container_number: "",
       type: "40_feet",
       transitaire: "",
       max_pallets: "33",
@@ -245,18 +244,37 @@ export default function Reservations() {
     }
   };
 
+  const generateReservationNumber = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-number', {
+        body: { entityType: 'reservation' }
+      });
+
+      if (error) throw error;
+      return data.number;
+    } catch (error) {
+      console.error('Error generating reservation number:', error);
+      toast({ title: "Erreur", description: "Erreur lors de la génération du numéro", variant: "destructive" });
+      return null;
+    }
+  };
+
   const handleCreateReservation = async (data: any) => {
     try {
       const maxPallets = parseInt(data.max_pallets);
       const maxWeight = parseFloat(data.max_weight);
       const maxVolume = parseFloat(data.max_volume);
 
+      // Générer le numéro automatiquement
+      const containerNumber = await generateReservationNumber();
+      if (!containerNumber) return;
+
       if (data.type === 'groupage') {
         // Créer le conteneur d'abord
         const { data: containerData, error: containerError } = await supabase
           .from('containers')
           .insert([{
-            number: data.container_number,
+            number: containerNumber,
             type: 'groupage',
             transitaire: data.transitaire,
             status: 'planning',
@@ -298,7 +316,7 @@ export default function Reservations() {
         const { error } = await supabase
           .from('containers')
           .insert([{
-            number: data.container_number,
+            number: containerNumber,
             type: data.type,
             transitaire: data.transitaire,
             status: 'planning',
@@ -316,7 +334,7 @@ export default function Reservations() {
         if (error) throw error;
       }
 
-      toast({ title: "Succès", description: "Réservation créée avec succès" });
+      toast({ title: "Succès", description: `Réservation créée avec succès (N° ${containerNumber})` });
       setIsCreateReservationOpen(false);
       createReservationForm.reset();
       fetchData();
@@ -701,12 +719,10 @@ export default function Reservations() {
             <form onSubmit={createReservationForm.handleSubmit(handleCreateReservation)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="container_number">Numéro de conteneur</Label>
-                  <Input
-                    id="container_number"
-                    placeholder="ex: CONT-001"
-                    {...createReservationForm.register('container_number', { required: true })}
-                  />
+                  <Label>Numéro de conteneur</Label>
+                  <div className="p-2 bg-muted rounded-md text-sm text-muted-foreground">
+                    Généré automatiquement à la création
+                  </div>
                 </div>
 
                 <div>
