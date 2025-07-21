@@ -17,7 +17,7 @@ const menuItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Commandes", url: "/orders", icon: ShoppingCart },
   { title: "Produits", url: "/products", icon: Package },
-  { title: "Transport Maritime", url: "/groupage", icon: Ship },
+  { title: "Réservations", url: "/reservations", icon: Ship },
   { title: "Documents", url: "/documents", icon: FolderOpen },
   { title: "Rapports", url: "/reports", icon: FileText },
   { title: "Fournisseurs", url: "/suppliers", icon: Building2 },
