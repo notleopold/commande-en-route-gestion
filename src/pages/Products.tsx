@@ -77,6 +77,8 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<{id: string, name: string}[]>([]);
   const [transitaires, setTransitaires] = useState<{id: string, name: string}[]>([]);
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [transitaireSearch, setTransitaireSearch] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showArchived, setShowArchived] = useState(false);
@@ -87,6 +89,18 @@ export default function Products() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [productToArchive, setProductToArchive] = useState<Product | null>(null);
+
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter(supplier => 
+      supplier.name.toLowerCase().includes(supplierSearch.toLowerCase())
+    );
+  }, [suppliers, supplierSearch]);
+
+  const filteredTransitaires = useMemo(() => {
+    return transitaires.filter(transitaire => 
+      transitaire.name.toLowerCase().includes(transitaireSearch.toLowerCase())
+    );
+  }, [transitaires, transitaireSearch]);
 
   const form = useForm({
     defaultValues: {
@@ -634,28 +648,58 @@ export default function Products() {
                            <FormItem>
                              <FormLabel>Fournisseurs</FormLabel>
                              <div className="space-y-2">
-                               {suppliers.map((supplier) => (
-                                 <div key={supplier.id} className="flex items-center space-x-2">
-                                   <Checkbox
-                                     id={supplier.id}
-                                     checked={field.value?.includes(supplier.name) || false}
-                                     onCheckedChange={(checked) => {
-                                       const currentValue = field.value || [];
-                                       if (checked) {
-                                         field.onChange([...currentValue, supplier.name]);
-                                       } else {
-                                         field.onChange(currentValue.filter((item: string) => item !== supplier.name));
-                                       }
-                                     }}
-                                   />
-                                   <label
-                                     htmlFor={supplier.id}
-                                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                   >
-                                     {supplier.name}
-                                   </label>
-                                 </div>
-                               ))}
+                               <div className="flex flex-wrap gap-2 mb-2">
+                                 {field.value?.map((supplierName: string) => (
+                                   <Badge key={supplierName} variant="secondary" className="flex items-center gap-1">
+                                     {supplierName}
+                                     <button
+                                       type="button"
+                                       onClick={() => {
+                                         const currentValue = field.value || [];
+                                         field.onChange(currentValue.filter((item: string) => item !== supplierName));
+                                       }}
+                                       className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center text-xs"
+                                     >
+                                       ×
+                                     </button>
+                                   </Badge>
+                                 ))}
+                               </div>
+                               <Select onValueChange={(value) => {
+                                 if (value && value !== "none") {
+                                   const currentValue = field.value || [];
+                                   if (!currentValue.includes(value)) {
+                                     field.onChange([...currentValue, value]);
+                                   }
+                                 }
+                               }}>
+                                 <FormControl>
+                                   <SelectTrigger>
+                                     <SelectValue placeholder="Ajouter un fournisseur" />
+                                   </SelectTrigger>
+                                 </FormControl>
+                                 <SelectContent>
+                                   <div className="p-2 border-b">
+                                     <Input
+                                       placeholder="Rechercher un fournisseur..."
+                                       value={supplierSearch}
+                                       onChange={(e) => setSupplierSearch(e.target.value)}
+                                       className="h-8"
+                                     />
+                                   </div>
+                                   {filteredSuppliers.length === 0 ? (
+                                     <div className="p-2 text-sm text-muted-foreground">
+                                       Aucun fournisseur trouvé
+                                     </div>
+                                   ) : (
+                                     filteredSuppliers.map(supplier => (
+                                       <SelectItem key={supplier.id} value={supplier.name}>
+                                         {supplier.name}
+                                       </SelectItem>
+                                     ))
+                                   )}
+                                 </SelectContent>
+                               </Select>
                              </div>
                              <FormMessage />
                            </FormItem>
@@ -668,19 +712,33 @@ export default function Products() {
                          render={({ field }) => (
                            <FormItem>
                              <FormLabel>Transitaire (optionnel)</FormLabel>
-                             <Select onValueChange={field.onChange} value={field.value}>
-                               <FormControl>
-                                 <SelectTrigger>
-                                   <SelectValue placeholder="Sélectionner un transitaire" />
-                                 </SelectTrigger>
-                               </FormControl>
-                               <SelectContent>
-                                 <SelectItem value="none">Aucun</SelectItem>
-                                 {transitaires.map(transitaire => (
-                                   <SelectItem key={transitaire.id} value={transitaire.name}>{transitaire.name}</SelectItem>
-                                 ))}
-                               </SelectContent>
-                             </Select>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner un transitaire" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <div className="p-2 border-b">
+                                    <Input
+                                      placeholder="Rechercher un transitaire..."
+                                      value={transitaireSearch}
+                                      onChange={(e) => setTransitaireSearch(e.target.value)}
+                                      className="h-8"
+                                    />
+                                  </div>
+                                  <SelectItem value="none">Aucun</SelectItem>
+                                  {filteredTransitaires.length === 0 ? (
+                                    <div className="p-2 text-sm text-muted-foreground">
+                                      Aucun transitaire trouvé
+                                    </div>
+                                  ) : (
+                                    filteredTransitaires.map(transitaire => (
+                                      <SelectItem key={transitaire.id} value={transitaire.name}>{transitaire.name}</SelectItem>
+                                    ))
+                                  )}
+                                </SelectContent>
+                              </Select>
                              <FormMessage />
                            </FormItem>
                          )}
