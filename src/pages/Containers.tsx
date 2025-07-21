@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Plus, Search, Container, Package, MapPin, Calendar, Eye, Edit, Ship, 
-  Weight, Ruler, AlertTriangle, Truck, Package2, Clock, CheckCircle,
+  Weight, Ruler, AlertTriangle, Truck, Clock, CheckCircle,
   XCircle, PlusCircle, MinusCircle, Trash2, Link, Unlink
 } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";

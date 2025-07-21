@@ -672,7 +672,7 @@ function Groupage() {
                                 size="sm"
                                 onClick={() => handleLoadingPlan(groupage)}
                               >
-                                <Package className="h-4 w-4" />
+                                <Package className="h-4 w-4 mr-1" />
                               </Button>
                               <Button
                                 variant="outline"
