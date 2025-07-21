@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +17,7 @@ import Groupage from "./pages/Groupage";
 import Documents from "./pages/Documents";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
+import ClerkUsers from "./pages/ClerkUsers";
 import Settings from "./pages/Settings";
 import TrashManagement from "./pages/TrashManagement";
 import Transitaires from "./pages/Transitaires";
@@ -49,6 +49,7 @@ const App = () => (
           <Route path="/documents" element={<ClerkProtectedRoute><Documents /></ClerkProtectedRoute>} />
           <Route path="/reports" element={<ClerkProtectedRoute><Reports /></ClerkProtectedRoute>} />
           <Route path="/users" element={<ClerkProtectedRoute><Users /></ClerkProtectedRoute>} />
+          <Route path="/clerk-users" element={<ClerkProtectedRoute><ClerkUsers /></ClerkProtectedRoute>} />
           <Route path="/settings" element={<ClerkProtectedRoute><Settings /></ClerkProtectedRoute>} />
           <Route path="/trash" element={<ClerkProtectedRoute><TrashManagement /></ClerkProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
