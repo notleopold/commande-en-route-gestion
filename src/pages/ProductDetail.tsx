@@ -14,6 +14,7 @@ import { ArrowLeft, Package, Save, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useCategories } from "@/hooks/useCategories";
 
 interface Product {
   id: string;
@@ -58,12 +59,12 @@ interface Product {
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { categories, createCategory, deleteCategory, refreshCategories } = useCategories();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [suppliers, setSuppliers] = useState<{id: string, name: string}[]>([]);
   const [transitaires, setTransitaires] = useState<{id: string, name: string}[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
   const [newCategory, setNewCategory] = useState("");
 
   const form = useForm<Product>({
@@ -111,7 +112,6 @@ export default function ProductDetail() {
       fetchProduct();
       fetchSuppliers();
       fetchTransitaires();
-      fetchCategories();
     }
   }, [id]);
 
@@ -165,86 +165,20 @@ export default function ProductDetail() {
     }
   };
 
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('category')
-        .not('category', 'is', null)
-        .neq('category', ''); // Exclude empty strings
-
-      if (error) throw error;
-      
-      // Filter out any empty strings and null values
-      const uniqueCategories = [...new Set(
-        data?.map(item => item.category)
-          .filter(category => category && category.trim() !== '') || []
-      )];
-      setCategories(uniqueCategories.sort());
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-    }
-  };
 
   const addNewCategory = async () => {
-    if (newCategory.trim() && !categories.includes(newCategory.trim())) {
-      const trimmedCategory = newCategory.trim();
-      
-      // Update the current product immediately to save the category
-      try {
-        const currentFormData = form.getValues();
-        const { error } = await supabase
-          .from('products')
-          .update({ ...currentFormData, category: trimmedCategory })
-          .eq('id', id);
-
-        if (error) throw error;
-
-        // Update local state
-        const updatedCategories = [...categories, trimmedCategory].sort();
-        setCategories(updatedCategories);
-        form.setValue('category', trimmedCategory);
-        setNewCategory("");
-        
-        toast.success(`Catégorie "${trimmedCategory}" créée et sauvegardée`);
-        
-        // Refresh categories to make sure it's available app-wide
-        fetchCategories();
-      } catch (error) {
-        console.error('Error saving new category:', error);
-        toast.error("Erreur lors de la sauvegarde de la nouvelle catégorie");
-      }
+    if (await createCategory(newCategory)) {
+      form.setValue('category', newCategory.trim());
+      setNewCategory("");
     }
   };
 
   const removeCategory = async (categoryToRemove: string) => {
-    try {
-      // Check if any products use this category
-      const { data: productsWithCategory, error: checkError } = await supabase
-        .from('products')
-        .select('id')
-        .eq('category', categoryToRemove);
-
-      if (checkError) throw checkError;
-
-      if (productsWithCategory && productsWithCategory.length > 0) {
-        toast.error(`Impossible de supprimer la catégorie "${categoryToRemove}" car ${productsWithCategory.length} produit(s) l'utilisent encore.`);
-        return;
-      }
-
-      // Remove from local state
-      const updatedCategories = categories.filter(cat => cat !== categoryToRemove);
-      setCategories(updatedCategories);
-      
+    if (await deleteCategory(categoryToRemove)) {
       // If the current product had this category, clear it
       if (form.getValues('category') === categoryToRemove) {
         form.setValue('category', '');
       }
-      
-      toast.success(`Catégorie "${categoryToRemove}" supprimée avec succès`);
-    } catch (error) {
-      console.error('Error removing category:', error);
-      toast.error("Erreur lors de la suppression de la catégorie");
     }
   };
 
@@ -260,7 +194,7 @@ export default function ProductDetail() {
 
       toast.success("Produit mis à jour avec succès");
       fetchProduct();
-      fetchCategories(); // Refresh categories in case a new one was added
+      refreshCategories(); // Refresh categories in case a new one was added
     } catch (error) {
       console.error('Error updating product:', error);
       toast.error("Erreur lors de la mise à jour du produit");

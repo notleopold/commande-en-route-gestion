@@ -18,6 +18,8 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
+import CategoryManager from "@/components/CategoryManager";
+import { useCategories } from "@/hooks/useCategories";
 
 interface Product {
   id: string;
@@ -74,6 +76,7 @@ const imdgClasses = [
 
 export default function Products() {
   const navigate = useNavigate();
+  const { categories } = useCategories();
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<{id: string, name: string}[]>([]);
   const [transitaires, setTransitaires] = useState<{id: string, name: string}[]>([]);
@@ -439,6 +442,8 @@ export default function Products() {
           </Card>
         </div>
 
+        {/* Gestionnaire de catégories */}
+        <CategoryManager />
         {/* Filtres et actions */}
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="flex flex-1 gap-4 items-center">
