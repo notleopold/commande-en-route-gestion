@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
-import Auth from "./pages/Auth";
+import ClerkAuth from "./pages/ClerkAuth";
 import Suppliers from "./pages/Suppliers";
 import SupplierDetail from "./pages/SupplierDetail";
 import OrderDetail from "./pages/OrderDetail";
@@ -22,7 +22,7 @@ import Settings from "./pages/Settings";
 import TrashManagement from "./pages/TrashManagement";
 import Transitaires from "./pages/Transitaires";
 import NotFound from "./pages/NotFound";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ClerkProtectedRoute } from "./components/ClerkProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -33,24 +33,24 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/suppliers" element={<Suppliers />} />
-          <Route path="/suppliers/:id" element={<SupplierDetail />} />
-          <Route path="/orders/:id" element={<OrderDetail />} />
-          <Route path="/orders/:id/edit" element={<OrderEdit />} />
-          <Route path="/products/:id" element={<ProductDetail />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/orders" element={<Orders />} />
-          <Route path="/transitaires" element={<Transitaires />} />
+          <Route path="/" element={<ClerkProtectedRoute><Index /></ClerkProtectedRoute>} />
+          <Route path="/auth" element={<ClerkAuth />} />
+          <Route path="/suppliers" element={<ClerkProtectedRoute><Suppliers /></ClerkProtectedRoute>} />
+          <Route path="/suppliers/:id" element={<ClerkProtectedRoute><SupplierDetail /></ClerkProtectedRoute>} />
+          <Route path="/orders/:id" element={<ClerkProtectedRoute><OrderDetail /></ClerkProtectedRoute>} />
+          <Route path="/orders/:id/edit" element={<ClerkProtectedRoute><OrderEdit /></ClerkProtectedRoute>} />
+          <Route path="/products/:id" element={<ClerkProtectedRoute><ProductDetail /></ClerkProtectedRoute>} />
+          <Route path="/products" element={<ClerkProtectedRoute><Products /></ClerkProtectedRoute>} />
+          <Route path="/clients" element={<ClerkProtectedRoute><Clients /></ClerkProtectedRoute>} />
+          <Route path="/orders" element={<ClerkProtectedRoute><Orders /></ClerkProtectedRoute>} />
+          <Route path="/transitaires" element={<ClerkProtectedRoute><Transitaires /></ClerkProtectedRoute>} />
           <Route path="/containers" element={<Navigate to="/groupage" replace />} />
-          <Route path="/groupage" element={<Groupage />} />
-          <Route path="/documents" element={<Documents />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/trash" element={<TrashManagement />} />
+          <Route path="/groupage" element={<ClerkProtectedRoute><Groupage /></ClerkProtectedRoute>} />
+          <Route path="/documents" element={<ClerkProtectedRoute><Documents /></ClerkProtectedRoute>} />
+          <Route path="/reports" element={<ClerkProtectedRoute><Reports /></ClerkProtectedRoute>} />
+          <Route path="/users" element={<ClerkProtectedRoute><Users /></ClerkProtectedRoute>} />
+          <Route path="/settings" element={<ClerkProtectedRoute><Settings /></ClerkProtectedRoute>} />
+          <Route path="/trash" element={<ClerkProtectedRoute><TrashManagement /></ClerkProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

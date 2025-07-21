@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { useAuth } from "@/hooks/useAuth";
+import { useClerk, useUser } from "@clerk/clerk-react";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 
@@ -11,7 +11,11 @@ interface LayoutProps {
 }
 
 export function Layout({ children, title }: LayoutProps) {
-  const { signOut } = useAuth();
+  const { signOut } = useClerk();
+
+  const handleSignOut = () => {
+    signOut({ redirectUrl: "/auth" });
+  };
 
   return (
     <SidebarProvider>
@@ -24,7 +28,7 @@ export function Layout({ children, title }: LayoutProps) {
                 <SidebarTrigger className="mr-4" />
                 <h1 className="text-xl font-semibold">{title}</h1>
               </div>
-              <Button variant="outline" size="sm" onClick={signOut}>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Déconnexion
               </Button>
