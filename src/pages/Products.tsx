@@ -321,7 +321,7 @@ export default function Products() {
         unit: data.unit,
         cost: parseFloat(data.cost),
         suppliers: data.suppliers || [],
-        transitaire: data.transitaire || null,
+        transitaire: data.transitaire === "none" ? null : data.transitaire || null,
         description: data.description,
         status: editingProduct?.status || "active",
         units_per_package: data.units_per_package ? parseInt(data.units_per_package) : null,
@@ -675,7 +675,7 @@ export default function Products() {
                                  </SelectTrigger>
                                </FormControl>
                                <SelectContent>
-                                 <SelectItem value="">Aucun</SelectItem>
+                                 <SelectItem value="none">Aucun</SelectItem>
                                  {transitaires.map(transitaire => (
                                    <SelectItem key={transitaire.id} value={transitaire.name}>{transitaire.name}</SelectItem>
                                  ))}
