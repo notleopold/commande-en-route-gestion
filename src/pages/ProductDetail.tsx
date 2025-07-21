@@ -63,6 +63,8 @@ export default function ProductDetail() {
   const [saving, setSaving] = useState(false);
   const [suppliers, setSuppliers] = useState<{id: string, name: string}[]>([]);
   const [transitaires, setTransitaires] = useState<{id: string, name: string}[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [newCategory, setNewCategory] = useState("");
 
   const form = useForm<Product>({
     defaultValues: {
@@ -109,6 +111,7 @@ export default function ProductDetail() {
       fetchProduct();
       fetchSuppliers();
       fetchTransitaires();
+      fetchCategories();
     }
   }, [id]);
 
@@ -162,6 +165,31 @@ export default function ProductDetail() {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('category')
+        .not('category', 'is', null);
+
+      if (error) throw error;
+      
+      const uniqueCategories = [...new Set(data?.map(item => item.category) || [])];
+      setCategories(uniqueCategories.sort());
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const addNewCategory = () => {
+    if (newCategory.trim() && !categories.includes(newCategory.trim())) {
+      const updatedCategories = [...categories, newCategory.trim()].sort();
+      setCategories(updatedCategories);
+      form.setValue('category', newCategory.trim());
+      setNewCategory("");
+    }
+  };
+
   const onSubmit = async (data: Product) => {
     setSaving(true);
     try {
@@ -174,6 +202,7 @@ export default function ProductDetail() {
 
       toast.success("Produit mis à jour avec succès");
       fetchProduct();
+      fetchCategories(); // Refresh categories in case a new one was added
     } catch (error) {
       console.error('Error updating product:', error);
       toast.error("Erreur lors de la mise à jour du produit");
@@ -254,22 +283,33 @@ export default function ProductDetail() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Catégorie</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionnez une catégorie" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Électronique">Électronique</SelectItem>
-                          <SelectItem value="Alimentaire">Alimentaire</SelectItem>
-                          <SelectItem value="Textile">Textile</SelectItem>
-                          <SelectItem value="Cosmétique">Cosmétique</SelectItem>
-                          <SelectItem value="Jouets">Jouets</SelectItem>
-                          <SelectItem value="Automobile">Automobile</SelectItem>
-                          <SelectItem value="Autre">Autre</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-2">
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Sélectionnez une catégorie" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {categories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <Input
+                          placeholder="Nouvelle catégorie"
+                          value={newCategory}
+                          onChange={(e) => setNewCategory(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addNewCategory())}
+                        />
+                        <Button type="button" onClick={addNewCategory} size="sm">
+                          Ajouter
+                        </Button>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -513,34 +553,6 @@ export default function ProductDetail() {
                     </FormItem>
                   )}
                 />
-
-                <FormField
-                  control={form.control}
-                  name="package_material_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Code matériau</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="package_signage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Signalétique</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
 
@@ -678,34 +690,6 @@ export default function ProductDetail() {
                           {...field}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="carton_material_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Code matériau</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="carton_signage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Signalétique</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
