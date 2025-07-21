@@ -367,6 +367,54 @@ export default function Reservations() {
     setIsLoadingPlanOpen(true);
   };
 
+  const handleDeleteReservation = async () => {
+    if (!reservationToDelete) return;
+
+    try {
+      if (reservationToDelete.type === 'groupage') {
+        // Supprimer le groupage d'abord
+        const { error: groupageError } = await supabase
+          .from('groupages')
+          .delete()
+          .eq('id', reservationToDelete.id);
+
+        if (groupageError) throw groupageError;
+
+        // Puis supprimer le conteneur associé
+        const { data: groupages } = await supabase
+          .from('groupages')
+          .select('container_id')
+          .eq('id', reservationToDelete.id)
+          .single();
+
+        if (groupages?.container_id) {
+          const { error: containerError } = await supabase
+            .from('containers')
+            .delete()
+            .eq('id', groupages.container_id);
+
+          if (containerError) throw containerError;
+        }
+      } else {
+        // Supprimer le conteneur classique
+        const { error } = await supabase
+          .from('containers')
+          .delete()
+          .eq('id', reservationToDelete.id);
+
+        if (error) throw error;
+      }
+
+      toast({ title: "Succès", description: "Réservation supprimée avec succès" });
+      setDeleteDialogOpen(false);
+      setReservationToDelete(null);
+      fetchData();
+    } catch (error) {
+      console.error('Error deleting reservation:', error);
+      toast({ title: "Erreur", description: "Erreur lors de la suppression", variant: "destructive" });
+    }
+  };
+
   return (
     <Layout title="Réservations de Transport">
       <div className="container mx-auto p-6">
@@ -509,36 +557,39 @@ export default function Reservations() {
                         </TableCell>
                         <TableCell>{getStatusBadge(reservation.status)}</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedReservation(reservation);
-                                setIsViewReservationOpen(true);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleLoadingPlan(reservation)}
-                            >
-                              <Package className="h-4 w-4 mr-1" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedReservation(reservation);
-                                setIsBookOrderOpen(true);
-                              }}
-                              disabled={reservation.status !== 'available'}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
+                           <div className="flex items-center gap-2">
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => {
+                                 setSelectedReservation(reservation);
+                                 setIsViewReservationOpen(true);
+                               }}
+                               title="Voir et modifier la réservation"
+                             >
+                               <Eye className="h-4 w-4" />
+                             </Button>
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => handleLoadingPlan(reservation)}
+                               title="Plan de chargement"
+                             >
+                               <Package className="h-4 w-4" />
+                             </Button>
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => {
+                                 setReservationToDelete(reservation);
+                                 setDeleteDialogOpen(true);
+                               }}
+                               title="Supprimer la réservation"
+                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                           </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -740,6 +791,131 @@ export default function Reservations() {
             container_id: selectedReservation?.id || ''
           } : undefined}
           type={selectedReservation?.type === 'groupage' ? 'groupage' : 'container'}
+        />
+
+        {/* Dialog de vue/modification de réservation */}
+        <Dialog open={isViewReservationOpen} onOpenChange={setIsViewReservationOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Détails de la réservation - {selectedReservation?.container_number}</DialogTitle>
+            </DialogHeader>
+
+            {selectedReservation && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Numéro de conteneur</Label>
+                    <div className="font-medium">{selectedReservation.container_number}</div>
+                  </div>
+                  <div>
+                    <Label>Type</Label>
+                    <div className="font-medium">{getTypeLabel(selectedReservation.type)}</div>
+                  </div>
+                </div>
+
+                <div>
+                  <Label>Transitaire</Label>
+                  <div className="font-medium">{selectedReservation.transitaire}</div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Palettes</Label>
+                    <div className="font-medium">{selectedReservation.available_pallets}/{selectedReservation.max_pallets}</div>
+                  </div>
+                  <div>
+                    <Label>Poids</Label>
+                    <div className="font-medium">{(selectedReservation.available_weight/1000).toFixed(1)}T / {(selectedReservation.max_weight/1000).toFixed(1)}T</div>
+                  </div>
+                  <div>
+                    <Label>Volume</Label>
+                    <div className="font-medium">{selectedReservation.available_volume.toFixed(1)}m³ / {selectedReservation.max_volume}m³</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Date de départ (ETD)</Label>
+                    <div className="font-medium">{selectedReservation.etd ? new Date(selectedReservation.etd).toLocaleDateString() : "Non définie"}</div>
+                  </div>
+                  <div>
+                    <Label>Date d'arrivée (ETA)</Label>
+                    <div className="font-medium">{selectedReservation.eta ? new Date(selectedReservation.eta).toLocaleDateString() : "Non définie"}</div>
+                  </div>
+                </div>
+
+                {selectedReservation.type !== 'groupage' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Port de départ</Label>
+                      <div className="font-medium">{selectedReservation.departure_port || "Non défini"}</div>
+                    </div>
+                    <div>
+                      <Label>Port d'arrivée</Label>
+                      <div className="font-medium">{selectedReservation.arrival_port || "Non défini"}</div>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <Label>Statut</Label>
+                  <div className="mt-1">{getStatusBadge(selectedReservation.status)}</div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="dangerous_goods"
+                    checked={selectedReservation.dangerous_goods_accepted}
+                    disabled
+                  />
+                  <Label htmlFor="dangerous_goods" className="text-sm">
+                    Produits dangereux acceptés
+                  </Label>
+                </div>
+
+                {/* Champ de confirmation - seulement si le plan de chargement n'est pas vide */}
+                {selectedReservation.available_pallets < selectedReservation.max_pallets && (
+                  <div className="border-t pt-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Checkbox
+                        id="confirm_reservation"
+                        // Vous pouvez ajouter la logique de confirmation ici
+                      />
+                      <Label htmlFor="confirm_reservation" className="text-sm font-medium">
+                        Confirmer la réservation
+                      </Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Cette option n'est disponible que lorsque le plan de chargement contient des commandes.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsViewReservationOpen(false)}>
+                    Fermer
+                  </Button>
+                  <Button onClick={() => {
+                    setIsViewReservationOpen(false);
+                    handleLoadingPlan(selectedReservation);
+                  }}>
+                    Voir le plan de chargement
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de confirmation de suppression */}
+        <ConfirmationDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={handleDeleteReservation}
+          title="Supprimer la réservation"
+          description={`Êtes-vous sûr de vouloir supprimer la réservation ${reservationToDelete?.container_number} ? Cette action est irréversible.`}
+          confirmText="Supprimer"
+          cancelText="Annuler"
         />
       </div>
     </Layout>
