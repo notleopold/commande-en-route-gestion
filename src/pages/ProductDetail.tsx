@@ -170,11 +170,16 @@ export default function ProductDetail() {
       const { data, error } = await supabase
         .from('products')
         .select('category')
-        .not('category', 'is', null);
+        .not('category', 'is', null)
+        .neq('category', ''); // Exclude empty strings
 
       if (error) throw error;
       
-      const uniqueCategories = [...new Set(data?.map(item => item.category) || [])];
+      // Filter out any empty strings and null values
+      const uniqueCategories = [...new Set(
+        data?.map(item => item.category)
+          .filter(category => category && category.trim() !== '') || []
+      )];
       setCategories(uniqueCategories.sort());
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -183,9 +188,10 @@ export default function ProductDetail() {
 
   const addNewCategory = () => {
     if (newCategory.trim() && !categories.includes(newCategory.trim())) {
-      const updatedCategories = [...categories, newCategory.trim()].sort();
+      const trimmedCategory = newCategory.trim();
+      const updatedCategories = [...categories, trimmedCategory].sort();
       setCategories(updatedCategories);
-      form.setValue('category', newCategory.trim());
+      form.setValue('category', trimmedCategory);
       setNewCategory("");
     }
   };
@@ -322,11 +328,13 @@ export default function ProductDetail() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
-                              </SelectItem>
-                            ))}
+                            {categories
+                              .filter(category => category && category.trim() !== '') // Filter out empty strings
+                              .map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                       </div>
