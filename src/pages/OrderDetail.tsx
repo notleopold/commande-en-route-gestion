@@ -352,24 +352,24 @@ export default function OrderDetail() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-muted-foreground">Total HT</label>
-                  <Input
-                    value={order.total_ht || ''}
-                    onChange={(e) => handleFieldUpdate('total_ht', parseFloat(e.target.value) || 0)}
-                    placeholder="0.00"
-                    type="number"
-                    step="0.01"
-                  />
+                  <div className="p-2 bg-muted/50 rounded text-sm font-medium">
+                    {(() => {
+                      const totalHT = order.order_products?.reduce((sum, item) => sum + (item.total_price || 0), 0) || 0;
+                      return `${totalHT.toFixed(2)} €`;
+                    })()}
+                  </div>
                 </div>
                 
                 <div>
                   <label className="text-sm text-muted-foreground">Total TTC</label>
-                  <Input
-                    value={order.total_ttc || ''}
-                    onChange={(e) => handleFieldUpdate('total_ttc', parseFloat(e.target.value) || 0)}
-                    placeholder="0.00"
-                    type="number"
-                    step="0.01"
-                  />
+                  <div className="p-2 bg-muted/50 rounded text-sm font-medium">
+                    {(() => {
+                      const totalHT = order.order_products?.reduce((sum, item) => sum + (item.total_price || 0), 0) || 0;
+                      const tvaRate = order.tva_rate || 20;
+                      const totalTTC = totalHT * (1 + tvaRate / 100);
+                      return `${totalTTC.toFixed(2)} €`;
+                    })()}
+                  </div>
                 </div>
               </div>
             </CardContent>
