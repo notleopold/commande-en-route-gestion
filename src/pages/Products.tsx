@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,6 +29,7 @@ interface Product {
   unit: string;
   cost: number;
   suppliers: string[];
+  transitaire?: string;
   status: string;
   description?: string;
   // Packaging details
@@ -73,6 +75,8 @@ const imdgClasses = [
 export default function Products() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<{id: string, name: string}[]>([]);
+  const [transitaires, setTransitaires] = useState<{id: string, name: string}[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showArchived, setShowArchived] = useState(false);
@@ -93,7 +97,8 @@ export default function Products() {
       imdg_class: "",
       unit: "",
       cost: "",
-      suppliers: "",
+      suppliers: [] as string[],
+      transitaire: "",
       description: "",
       // Package level
       units_per_package: "",
@@ -129,6 +134,8 @@ export default function Products() {
   // Fetch products from Supabase
   useEffect(() => {
     fetchProducts();
+    fetchSuppliers();
+    fetchTransitaires();
   }, []);
 
   const fetchProducts = async () => {
@@ -145,6 +152,36 @@ export default function Products() {
       toast.error("Erreur lors du chargement des produits");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSuppliers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('id, name')
+        .eq('status', 'active')
+        .order('name');
+      
+      if (error) throw error;
+      setSuppliers(data || []);
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+    }
+  };
+
+  const fetchTransitaires = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transitaires')
+        .select('id, name')
+        .eq('status', 'active')
+        .order('name');
+      
+      if (error) throw error;
+      setTransitaires(data || []);
+    } catch (error) {
+      console.error('Error fetching transitaires:', error);
     }
   };
 
@@ -172,9 +209,9 @@ export default function Products() {
       imdg_class: product.imdg_class || "",
       unit: product.unit,
       cost: product.cost.toString(),
-      suppliers: product.suppliers.join(", "),
+      suppliers: product.suppliers || [],
+      transitaire: product.transitaire || "",
       description: product.description || "",
-      // Package level
       units_per_package: product.units_per_package?.toString() || "",
       package_dimensions_length: product.package_dimensions_length?.toString() || "",
       package_dimensions_width: product.package_dimensions_width?.toString() || "",
@@ -283,10 +320,10 @@ export default function Products() {
         imdg_class: data.dangerous && data.imdg_class ? data.imdg_class : null,
         unit: data.unit,
         cost: parseFloat(data.cost),
-        suppliers: data.suppliers.split(",").map((s: string) => s.trim()),
+        suppliers: data.suppliers || [],
+        transitaire: data.transitaire || null,
         description: data.description,
         status: editingProduct?.status || "active",
-        // Package level
         units_per_package: data.units_per_package ? parseInt(data.units_per_package) : null,
         package_dimensions_length: data.package_dimensions_length ? parseFloat(data.package_dimensions_length) : null,
         package_dimensions_width: data.package_dimensions_width ? parseFloat(data.package_dimensions_width) : null,
@@ -590,19 +627,64 @@ export default function Products() {
                         />
                       )}
                       
-                      <FormField
-                        control={form.control}
-                        name="suppliers"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Fournisseurs (séparés par des virgules)</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Fournisseur 1, Fournisseur 2" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                       <FormField
+                         control={form.control}
+                         name="suppliers"
+                         render={({ field }) => (
+                           <FormItem>
+                             <FormLabel>Fournisseurs</FormLabel>
+                             <div className="space-y-2">
+                               {suppliers.map((supplier) => (
+                                 <div key={supplier.id} className="flex items-center space-x-2">
+                                   <Checkbox
+                                     id={supplier.id}
+                                     checked={field.value?.includes(supplier.name) || false}
+                                     onCheckedChange={(checked) => {
+                                       const currentValue = field.value || [];
+                                       if (checked) {
+                                         field.onChange([...currentValue, supplier.name]);
+                                       } else {
+                                         field.onChange(currentValue.filter((item: string) => item !== supplier.name));
+                                       }
+                                     }}
+                                   />
+                                   <label
+                                     htmlFor={supplier.id}
+                                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                   >
+                                     {supplier.name}
+                                   </label>
+                                 </div>
+                               ))}
+                             </div>
+                             <FormMessage />
+                           </FormItem>
+                         )}
+                       />
+
+                       <FormField
+                         control={form.control}
+                         name="transitaire"
+                         render={({ field }) => (
+                           <FormItem>
+                             <FormLabel>Transitaire (optionnel)</FormLabel>
+                             <Select onValueChange={field.onChange} value={field.value}>
+                               <FormControl>
+                                 <SelectTrigger>
+                                   <SelectValue placeholder="Sélectionner un transitaire" />
+                                 </SelectTrigger>
+                               </FormControl>
+                               <SelectContent>
+                                 <SelectItem value="">Aucun</SelectItem>
+                                 {transitaires.map(transitaire => (
+                                   <SelectItem key={transitaire.id} value={transitaire.name}>{transitaire.name}</SelectItem>
+                                 ))}
+                               </SelectContent>
+                             </Select>
+                             <FormMessage />
+                           </FormItem>
+                         )}
+                       />
                       
                       <FormField
                         control={form.control}
