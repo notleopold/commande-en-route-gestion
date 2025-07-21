@@ -18,6 +18,8 @@ import Documents from "./pages/Documents";
 import Reports from "./pages/Reports";
 import Users from "./pages/Users";
 import ClerkUsers from "./pages/ClerkUsers";
+import Profile from "./pages/Profile";
+import Organizations from "./pages/Organizations";
 import Settings from "./pages/Settings";
 import TrashManagement from "./pages/TrashManagement";
 import Transitaires from "./pages/Transitaires";
@@ -48,10 +50,12 @@ const App = () => (
           <Route path="/groupage" element={<ClerkProtectedRoute><Groupage /></ClerkProtectedRoute>} />
           <Route path="/documents" element={<ClerkProtectedRoute><Documents /></ClerkProtectedRoute>} />
           <Route path="/reports" element={<ClerkProtectedRoute><Reports /></ClerkProtectedRoute>} />
-          <Route path="/users" element={<ClerkProtectedRoute><Users /></ClerkProtectedRoute>} />
-          <Route path="/clerk-users" element={<ClerkProtectedRoute><ClerkUsers /></ClerkProtectedRoute>} />
-          <Route path="/settings" element={<ClerkProtectedRoute><Settings /></ClerkProtectedRoute>} />
-          <Route path="/trash" element={<ClerkProtectedRoute><TrashManagement /></ClerkProtectedRoute>} />
+            <Route path="/users" element={<ClerkProtectedRoute><Users /></ClerkProtectedRoute>} />
+            <Route path="/clerk-users" element={<ClerkProtectedRoute><ClerkUsers /></ClerkProtectedRoute>} />
+            <Route path="/profile" element={<ClerkProtectedRoute><Profile /></ClerkProtectedRoute>} />
+            <Route path="/organizations" element={<ClerkProtectedRoute><Organizations /></ClerkProtectedRoute>} />
+            <Route path="/settings" element={<ClerkProtectedRoute><Settings /></ClerkProtectedRoute>} />
+            <Route path="/trash" element={<ClerkProtectedRoute><TrashManagement /></ClerkProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

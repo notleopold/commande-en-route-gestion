@@ -1,4 +1,4 @@
-import { Home, Package, Truck, Users, Settings, ShoppingCart, Ship, Archive, FileText, Building2, UserCheck, Trash2, FolderOpen } from "lucide-react";
+import { Home, Package, Truck, Users, Settings, ShoppingCart, Ship, Archive, FileText, Building2, UserCheck, Trash2, FolderOpen, Building, User } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useClerkUserRole } from "@/hooks/useClerkUserRole";
 
 const menuItems = [
   { title: "Commandes", url: "/orders", icon: ShoppingCart },
@@ -23,18 +23,21 @@ const menuItems = [
   { title: "Fournisseurs", url: "/suppliers", icon: Building2 },
   { title: "Clients", url: "/clients", icon: UserCheck },
   { title: "Transitaires", url: "/transitaires", icon: Truck },
+  { title: "Mon Profil", url: "/profile", icon: User },
   { title: "Paramètres", url: "/settings", icon: Settings },
 ];
 
 const adminMenuItems = [
   { title: "Utilisateurs", url: "/users", icon: Users },
+  { title: "Utilisateurs (Clerk)", url: "/clerk-users", icon: UserCheck },
+  { title: "Organisations", url: "/organizations", icon: Building },
   { title: "Corbeille", url: "/trash", icon: Trash2 },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
-  const { isAdmin, loading } = useUserRole();
+  const { isAdmin, loading } = useClerkUserRole();
   const isCollapsed = state === "collapsed";
   
   const isActive = (path: string) => {
