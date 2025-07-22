@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Minus, Check, X, Package, Weight, Gauge } from 'lucide-react';
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
@@ -85,6 +86,7 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [empotageConfirmed, setEmpotageConfirmed] = useState<Record<string, boolean>>({});
 
   const bookingForm = useForm({
     defaultValues: {
@@ -447,22 +449,32 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
                                 {order.cartons ? ` ${order.cartons} cartons` : ''}
                               </div>
                             </div>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => window.open(`/orders/${order.id}`, '_blank')}
-                              >
-                                Ouvrir
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRemoveOrder(order.id)}
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                            </div>
+                             <div className="flex gap-2 items-center">
+                               <div className="flex flex-col items-center gap-1">
+                                 <Label htmlFor={`empotage-${order.id}`} className="text-xs">Empotage</Label>
+                                 <Switch
+                                   id={`empotage-${order.id}`}
+                                   checked={empotageConfirmed[order.id] || false}
+                                   onCheckedChange={(checked) => 
+                                     setEmpotageConfirmed(prev => ({...prev, [order.id]: checked}))
+                                   }
+                                 />
+                               </div>
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => window.open(`/orders/${order.id}`, '_blank')}
+                               >
+                                 Ouvrir
+                               </Button>
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => handleRemoveOrder(order.id)}
+                               >
+                                 <Minus className="h-4 w-4" />
+                               </Button>
+                             </div>
                           </div>
                         ))}
                       </div>
@@ -489,33 +501,43 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
                                 {booking.booking_status}
                               </Badge>
                             </div>
-                            <div className="flex gap-2">
-                              {booking.booking_status === 'pending' && (
-                                <>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleConfirmBooking(booking.id, true)}
-                                  >
-                                    <Check className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleConfirmBooking(booking.id, false)}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRemoveOrder(booking.order_id)}
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                            </div>
+                             <div className="flex gap-2 items-center">
+                               <div className="flex flex-col items-center gap-1">
+                                 <Label htmlFor={`empotage-${booking.order_id}`} className="text-xs">Empotage</Label>
+                                 <Switch
+                                   id={`empotage-${booking.order_id}`}
+                                   checked={empotageConfirmed[booking.order_id] || false}
+                                   onCheckedChange={(checked) => 
+                                     setEmpotageConfirmed(prev => ({...prev, [booking.order_id]: checked}))
+                                   }
+                                 />
+                               </div>
+                               {booking.booking_status === 'pending' && (
+                                 <>
+                                   <Button
+                                     variant="outline"
+                                     size="sm"
+                                     onClick={() => handleConfirmBooking(booking.id, true)}
+                                   >
+                                     <Check className="h-4 w-4" />
+                                   </Button>
+                                   <Button
+                                     variant="outline"
+                                     size="sm"
+                                     onClick={() => handleConfirmBooking(booking.id, false)}
+                                   >
+                                     <X className="h-4 w-4" />
+                                   </Button>
+                                 </>
+                               )}
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => handleRemoveOrder(booking.order_id)}
+                               >
+                                 <Minus className="h-4 w-4" />
+                               </Button>
+                             </div>
                           </div>
                         ))}
                       </div>
