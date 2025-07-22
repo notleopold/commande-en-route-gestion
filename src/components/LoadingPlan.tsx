@@ -467,13 +467,15 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
                                >
                                  Ouvrir
                                </Button>
-                               <Button
-                                 variant="outline"
-                                 size="sm"
-                                 onClick={() => handleRemoveOrder(order.id)}
-                               >
-                                 <Minus className="h-4 w-4" />
-                               </Button>
+                               {!empotageConfirmed[order.id] && (
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() => handleRemoveOrder(order.id)}
+                                 >
+                                   <Minus className="h-4 w-4" />
+                                 </Button>
+                               )}
                              </div>
                           </div>
                         ))}
@@ -530,13 +532,15 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
                                    </Button>
                                  </>
                                )}
-                               <Button
-                                 variant="outline"
-                                 size="sm"
-                                 onClick={() => handleRemoveOrder(booking.order_id)}
-                               >
-                                 <Minus className="h-4 w-4" />
-                               </Button>
+                                {!empotageConfirmed[booking.order_id] && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleRemoveOrder(booking.order_id)}
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                  </Button>
+                                )}
                              </div>
                           </div>
                         ))}
