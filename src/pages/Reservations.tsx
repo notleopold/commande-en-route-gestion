@@ -157,7 +157,7 @@ export default function Reservations() {
         .from('groupages')
         .select(`
           *,
-          containers!inner(*)
+          containers(*)
         `)
         .order('created_at', { ascending: false });
 
