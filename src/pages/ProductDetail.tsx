@@ -16,6 +16,16 @@ import { toast } from "sonner";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useCategories } from "@/hooks/useCategories";
 
+const imdgClasses = [
+  "Classe 1 – Explosifs", "Classe 2.1 – Gaz inflammables", "Classe 2.2 – Gaz non inflammables", 
+  "Classe 2.3 – Gaz toxiques", "Classe 3 – Liquides inflammables", 
+  "Classe 4.1 – Solides inflammables", "Classe 4.2 – Matières auto-inflammables", 
+  "Classe 4.3 – Réagissant dangereusement à l'eau", "Classe 5.1 – Comburants", 
+  "Classe 5.2 – Peroxydes organiques", "Classe 6.1 – Substances toxiques", 
+  "Classe 6.2 – Substances infectieuses", "Classe 7 – Radioactifs", 
+  "Classe 8 – Corrosifs", "Classe 9 – Divers"
+];
+
 interface Product {
   id: string;
   name: string;
@@ -461,9 +471,18 @@ export default function ProductDetail() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Classe IMDG</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Ex: Class 3" />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Sélectionner une classe IMDG" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {imdgClasses.map(imdgClass => (
+                              <SelectItem key={imdgClass} value={imdgClass}>{imdgClass}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
