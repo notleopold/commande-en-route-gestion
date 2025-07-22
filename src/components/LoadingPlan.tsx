@@ -368,8 +368,8 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Statistiques */}
             <div className="lg:col-span-3">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <Card>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 justify-items-center">
+                <Card className="w-full max-w-xs mx-auto">
                   <CardContent className="p-4 text-center">
                     <div className="flex items-center justify-center mb-2">
                       <Package className="h-5 w-5 text-blue-500" />
@@ -382,7 +382,7 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="w-full max-w-xs mx-auto">
                   <CardContent className="p-4 text-center">
                     <div className="flex items-center justify-center mb-2">
                       <Weight className="h-5 w-5 text-green-500" />
@@ -395,7 +395,7 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="w-full max-w-xs mx-auto">
                   <CardContent className="p-4 text-center">
                     <div className="flex items-center justify-center mb-2">
                       <Gauge className="h-5 w-5 text-purple-500" />
@@ -408,13 +408,13 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="w-full max-w-xs mx-auto">
                   <CardContent className="p-4 text-center">
                     <div className="text-2xl font-bold">{totalValue.toLocaleString('fr-FR', {
                       style: 'currency',
                       currency: 'EUR'
                     })}</div>
-                    <div className="text-sm text-muted-foreground">Valeur totale</div>
+                    <div className="text-sm text-muted-foreground">Valeur totale assignée</div>
                   </CardContent>
                 </Card>
               </div>
