@@ -19,26 +19,28 @@ import { ConfirmationDialog } from "@/components/ConfirmationDialog";
 import { LoadingPlan } from "@/components/LoadingPlan";
 import { EditReservationForm } from "@/components/EditReservationForm";
 
-// Types unifiés pour les réservations
+// Types pour les réservations
 interface Reservation {
   id: string;
-  container_number: string;
   reservation_number?: string;
   type: '20_feet' | '40_feet' | 'groupage';
   transitaire: string;
+  status: string;
   max_pallets: number;
   max_weight: number;
   max_volume: number;
+  available_pallets: number;
+  available_weight: number;
+  available_volume: number;
   etd?: string;
   eta?: string;
   departure_port?: string;
   arrival_port?: string;
   port_cutoff?: string;
-  dangerous_goods_accepted: boolean;
-  available_pallets: number;
-  available_weight: number;
-  available_volume: number;
-  status: string;
+  dangerous_goods_accepted?: boolean;
+  cost_per_palette?: number;
+  cost_per_kg?: number;
+  cost_per_m3?: number;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -55,7 +57,7 @@ interface Order {
   total_ttc?: number;
   is_received: boolean;
   order_products?: any[];
-  container_id?: string;
+  reservation_id?: string;
 }
 
 const RESERVATION_TYPES = [
@@ -95,20 +97,16 @@ export default function Reservations() {
   const [loading, setLoading] = useState(true);
 
   // Dialog states
-  const [isCreateReservationOpen, setIsCreateReservationOpen] = useState(false);
-  const [isEditReservationOpen, setIsEditReservationOpen] = useState(false);
-  const [isViewReservationOpen, setIsViewReservationOpen] = useState(false);
-  const [isBookOrderOpen, setIsBookOrderOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isLoadingPlanOpen, setIsLoadingPlanOpen] = useState(false);
-  const [reservationToDelete, setReservationToDelete] = useState<Reservation | null>(null);
 
-  // Forms
-  const createReservationForm = useForm({
+  // Form
+  const form = useForm({
     defaultValues: {
-      container_number: "",
       type: "40_feet",
       transitaire: "",
       max_pallets: "33",
@@ -119,7 +117,10 @@ export default function Reservations() {
       departure_port: "",
       arrival_port: "",
       port_cutoff: "",
-      dangerous_goods_accepted: false,
+      dangerous_goods: false,
+      cost_per_palette: "0",
+      cost_per_kg: "0",
+      cost_per_m3: "0",
       notes: ""
     }
   });
@@ -145,77 +146,25 @@ export default function Reservations() {
 
   const fetchReservations = async () => {
     try {
-      // Pour l'instant, on récupère depuis containers et groupages existants
-      const { data: containers, error: containersError } = await supabase
-        .from('containers')
+      const { data, error } = await supabase
+        .from('reservations')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (containersError) throw containersError;
+      if (error) throw error;
 
-      const { data: groupages, error: groupagesError } = await supabase
-        .from('groupages')
-        .select(`
-          *,
-          containers(*)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (groupagesError) throw groupagesError;
-
-      // Transformer en format unifié
-      const containerReservations: Reservation[] = containers?.map(container => ({
-        id: container.id,
-        container_number: container.number,
-        reservation_number: container.reservation_number,
-        type: container.type === '20_feet' ? '20_feet' : '40_feet',
-        transitaire: container.transitaire,
-        max_pallets: container.max_pallets || 33,
-        max_weight: container.max_weight || 28000,
-        max_volume: container.max_volume || 76,
-        etd: container.etd,
-        eta: container.eta,
-        departure_port: container.departure_port,
-        arrival_port: container.arrival_port,
-        port_cutoff: container.port_cutoff,
-        dangerous_goods_accepted: container.dangerous_goods || false,
-        available_pallets: container.max_pallets || 33,
-        available_weight: container.max_weight || 28000,
-        available_volume: container.max_volume || 76,
-        status: container.status || 'available',
-        notes: '',
-        created_at: container.created_at,
-        updated_at: container.updated_at
-      })) || [];
-
-      const groupageReservations: Reservation[] = groupages?.map(groupage => ({
-        id: groupage.id,
-        container_number: groupage.containers?.number || 'N/A',
-        reservation_number: groupage.reservation_number,
-        type: 'groupage' as const,
-        transitaire: groupage.transitaire,
-        max_pallets: groupage.max_space_pallets,
-        max_weight: groupage.max_weight,
-        max_volume: groupage.max_volume,
-        etd: groupage.departure_date,
-        eta: groupage.arrival_date,
-        departure_port: '',
-        arrival_port: '',
-        port_cutoff: '',
-        dangerous_goods_accepted: groupage.allows_dangerous_goods,
-        available_pallets: groupage.available_space_pallets,
-        available_weight: groupage.available_weight,
-        available_volume: groupage.available_volume,
-        status: groupage.status,
-        notes: groupage.notes,
-        created_at: groupage.created_at,
-        updated_at: groupage.updated_at
-      })) || [];
-
-      setReservations([...containerReservations, ...groupageReservations]);
+      setReservations((data || []).map(item => ({
+        ...item,
+        type: item.type as '20_feet' | '40_feet' | 'groupage',
+        dangerous_goods_accepted: item.dangerous_goods_accepted || false
+      })));
     } catch (error) {
-      console.error('Error fetching reservations:', error);
-      toast({ title: "Erreur", description: "Erreur lors du chargement des réservations", variant: "destructive" });
+      console.error('Erreur lors de la récupération des réservations:', error);
+      toast({ 
+        title: "Erreur", 
+        description: "Erreur lors de la récupération des réservations", 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -248,7 +197,7 @@ export default function Reservations() {
     }
   };
 
-  const generateReservationNumber = async () => {
+  const generateReservationNumber = async (type: string) => {
     try {
       const { data, error } = await supabase.functions.invoke('generate-number', {
         body: { entityType: 'reservation' }
@@ -258,87 +207,74 @@ export default function Reservations() {
       return data.number;
     } catch (error) {
       console.error('Error generating reservation number:', error);
-      toast({ title: "Erreur", description: "Erreur lors de la génération du numéro", variant: "destructive" });
+      toast({ 
+        title: "Erreur", 
+        description: "Erreur lors de la génération du numéro", 
+        variant: "destructive" 
+      });
       return null;
     }
   };
 
   const handleCreateReservation = async (data: any) => {
     try {
-      const maxPallets = parseInt(data.max_pallets);
-      const maxWeight = parseFloat(data.max_weight);
-      const maxVolume = parseFloat(data.max_volume);
+      setLoading(true);
+      
+      // Générer un numéro de réservation
+      const reservationNumber = await generateReservationNumber(data.type);
+      
+      const { error } = await supabase
+        .from('reservations')
+        .insert({
+          reservation_number: reservationNumber,
+          type: data.type,
+          transitaire: data.transitaire,
+          status: data.type === 'groupage' ? 'available' : 'planning',
+          max_pallets: data.max_pallets || TYPE_CONFIGS[data.type as keyof typeof TYPE_CONFIGS]?.pallets || 33,
+          max_weight: data.max_weight || TYPE_CONFIGS[data.type as keyof typeof TYPE_CONFIGS]?.weight || 28000,
+          max_volume: data.max_volume || TYPE_CONFIGS[data.type as keyof typeof TYPE_CONFIGS]?.volume || 76,
+          available_pallets: data.type === 'groupage' ? (data.max_pallets || TYPE_CONFIGS.groupage.pallets) : 0,
+          available_weight: data.type === 'groupage' ? (data.max_weight || TYPE_CONFIGS.groupage.weight) : 0,
+          available_volume: data.type === 'groupage' ? (data.max_volume || TYPE_CONFIGS.groupage.volume) : 0,
+          etd: data.etd,
+          eta: data.eta,
+          departure_port: data.departure_port,
+          arrival_port: data.arrival_port,
+          port_cutoff: data.port_cutoff,
+          dangerous_goods_accepted: data.dangerous_goods || false,
+          cost_per_palette: data.type === 'groupage' ? (data.cost_per_palette || 0) : 0,
+          cost_per_kg: data.type === 'groupage' ? (data.cost_per_kg || 0) : 0,
+          cost_per_m3: data.type === 'groupage' ? (data.cost_per_m3 || 0) : 0,
+          notes: data.notes
+        });
 
-      // Générer le numéro de réservation automatiquement
-      const reservationNumber = await generateReservationNumber();
-      if (!reservationNumber) return;
+      if (error) throw error;
 
-      // Utiliser le numéro de conteneur saisi par l'utilisateur
-      const containerNumber = data.container_number;
-
-      if (data.type === 'groupage') {
-        // Créer seulement le groupage (pas de conteneur)
-        const { error: groupageError } = await supabase
-          .from('groupages')
-          .insert([{
-            container_id: null, // Pas de conteneur associé
-            reservation_number: reservationNumber,
-            transitaire: data.transitaire,
-            max_space_pallets: maxPallets,
-            available_space_pallets: maxPallets,
-            max_weight: maxWeight,
-            available_weight: maxWeight,
-            max_volume: maxVolume,
-            available_volume: maxVolume,
-            allows_dangerous_goods: data.dangerous_goods_accepted,
-            cost_per_palette: 0,
-            departure_date: data.etd || null,
-            arrival_date: data.eta || null,
-            notes: data.notes,
-            status: 'available'
-          }]);
-
-        if (groupageError) throw groupageError;
-      } else {
-        // Créer un conteneur classique
-        const { error } = await supabase
-          .from('containers')
-          .insert([{
-            number: containerNumber,
-            reservation_number: reservationNumber,
-            type: data.type,
-            transitaire: data.transitaire,
-            status: 'planning',
-            etd: data.etd || null,
-            eta: data.eta || null,
-            departure_port: data.departure_port || null,
-            arrival_port: data.arrival_port || null,
-            port_cutoff: data.port_cutoff || null,
-            max_pallets: maxPallets,
-            max_weight: maxWeight,
-            max_volume: maxVolume,
-            dangerous_goods: data.dangerous_goods_accepted
-          }]);
-
-        if (error) throw error;
-      }
-
-      toast({ title: "Succès", description: `Réservation créée avec succès (N° ${reservationNumber})` });
-      setIsCreateReservationOpen(false);
-      createReservationForm.reset();
-      fetchData();
+      toast({ 
+        title: "Succès", 
+        description: "Réservation créée avec succès" 
+      });
+      setIsCreateDialogOpen(false);
+      form.reset();
+      await fetchData();
     } catch (error) {
-      console.error('Error creating reservation:', error);
-      toast({ title: "Erreur", description: "Erreur lors de la création", variant: "destructive" });
+      console.error('Erreur lors de la création de la réservation:', error);
+      toast({ 
+        title: "Erreur", 
+        description: "Erreur lors de la création de la réservation", 
+        variant: "destructive" 
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleTypeChange = (type: string) => {
     const config = TYPE_CONFIGS[type as keyof typeof TYPE_CONFIGS];
     if (config) {
-      createReservationForm.setValue('max_pallets', config.pallets.toString());
-      createReservationForm.setValue('max_weight', config.weight.toString());
-      createReservationForm.setValue('max_volume', config.volume.toString());
+      form.setValue('max_pallets', config.pallets.toString());
+      form.setValue('max_weight', config.weight.toString());
+      form.setValue('max_volume', config.volume.toString());
     }
   };
 
@@ -361,9 +297,8 @@ export default function Reservations() {
   };
 
   const filteredReservations = reservations.filter(reservation => {
-    const matchesSearch = reservation.container_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         reservation.transitaire.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (reservation.reservation_number && reservation.reservation_number.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = (reservation.reservation_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         reservation.transitaire.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || reservation.status === statusFilter;
     const matchesType = typeFilter === "all" || reservation.type === typeFilter;
     const matchesTransitaire = transitaireFilter === "all" || reservation.transitaire === transitaireFilter;
@@ -377,181 +312,102 @@ export default function Reservations() {
   };
 
   const handleUpdateReservation = async (data: any) => {
-    console.log('Reservations - handleUpdateReservation called with data:', data);
-    console.log('Reservations - selectedReservation:', selectedReservation);
-    
-    if (!selectedReservation) {
-      console.error('Reservations - No selectedReservation found');
-      return;
-    }
+    if (!selectedReservation) return;
 
     try {
-      if (selectedReservation.type === 'groupage') {
-        // Mettre à jour le groupage
-        const { error: groupageError } = await supabase
-          .from('groupages')
-          .update({
-            transitaire: data.transitaire,
-            max_space_pallets: data.max_pallets,
-            available_space_pallets: data.max_pallets, // Reset available pallets
-            max_weight: data.max_weight,
-            available_weight: data.max_weight, // Reset available weight
-            max_volume: data.max_volume,
-            available_volume: data.max_volume, // Reset available volume
-            allows_dangerous_goods: data.dangerous_goods_accepted,
-            departure_date: data.etd || null,
-            arrival_date: data.eta || null,
-            notes: data.notes,
-            status: data.status
-          })
-          .eq('id', selectedReservation.id);
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('reservations')
+        .update({
+          transitaire: data.transitaire,
+          status: data.status,
+          max_pallets: data.max_pallets,
+          max_weight: data.max_weight,
+          max_volume: data.max_volume,
+          etd: data.etd,
+          eta: data.eta,
+          departure_port: data.departure_port,
+          arrival_port: data.arrival_port,
+          port_cutoff: data.port_cutoff,
+          dangerous_goods_accepted: data.dangerous_goods,
+          cost_per_palette: data.cost_per_palette || 0,
+          cost_per_kg: data.cost_per_kg || 0,
+          cost_per_m3: data.cost_per_m3 || 0,
+          notes: data.notes
+        })
+        .eq('id', selectedReservation.id);
 
-        if (groupageError) throw groupageError;
+      if (error) throw error;
 
-        // Mettre à jour le conteneur associé si nécessaire
-        const { data: groupageData } = await supabase
-          .from('groupages')
-          .select('container_id')
-          .eq('id', selectedReservation.id)
-          .single();
-
-        if (groupageData?.container_id) {
-          const { error: containerError } = await supabase
-            .from('containers')
-            .update({
-              number: data.container_number,
-              transitaire: data.transitaire,
-              max_pallets: data.max_pallets,
-              max_weight: data.max_weight,
-              max_volume: data.max_volume,
-              dangerous_goods: data.dangerous_goods_accepted,
-              etd: data.etd || null,
-              eta: data.eta || null,
-              status: data.status
-            })
-            .eq('id', groupageData.container_id);
-
-          if (containerError) throw containerError;
-        }
-      } else {
-        // Mettre à jour le conteneur classique
-        const { error } = await supabase
-          .from('containers')
-          .update({
-            number: data.container_number,
-            type: data.type,
-            transitaire: data.transitaire,
-            max_pallets: data.max_pallets,
-            max_weight: data.max_weight,
-            max_volume: data.max_volume,
-            etd: data.etd || null,
-            eta: data.eta || null,
-            departure_port: data.departure_port || null,
-            arrival_port: data.arrival_port || null,
-            port_cutoff: data.port_cutoff || null,
-            dangerous_goods: data.dangerous_goods_accepted,
-            status: data.status
-          })
-          .eq('id', selectedReservation.id);
-
-        if (error) throw error;
-      }
-
-      toast({ title: "Succès", description: "Réservation mise à jour avec succès" });
-      await fetchData(); // Refresh data
+      toast({ 
+        title: "Succès", 
+        description: "Réservation mise à jour avec succès" 
+      });
+      setIsEditDialogOpen(false);
+      setSelectedReservation(null);
+      await fetchData();
     } catch (error) {
-      console.error('Error updating reservation:', error);
-      toast({ title: "Erreur", description: "Erreur lors de la mise à jour", variant: "destructive" });
+      console.error('Erreur lors de la mise à jour de la réservation:', error);
+      toast({ 
+        title: "Erreur", 
+        description: "Erreur lors de la mise à jour de la réservation", 
+        variant: "destructive" 
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-
   const handleDeleteReservation = async () => {
-    if (!reservationToDelete) return;
+    if (!selectedReservation) return;
 
     try {
-      if (reservationToDelete.type === 'groupage') {
-        // Récupérer le container_id AVANT la suppression
-        const { data: groupageData } = await supabase
-          .from('groupages')
-          .select('container_id')
-          .eq('id', reservationToDelete.id)
-          .single();
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('reservations')
+        .delete()
+        .eq('id', selectedReservation.id);
 
-        // Supprimer d'abord les références au container dans les commandes
-        if (groupageData?.container_id) {
-          const { error: ordersUpdateError } = await supabase
-            .from('orders')
-            .update({ container_id: null })
-            .eq('container_id', groupageData.container_id);
+      if (error) throw error;
 
-          if (ordersUpdateError) throw ordersUpdateError;
-        }
-
-        // Supprimer la référence au container dans groupage (mettre à null)
-        if (groupageData?.container_id) {
-          const { error: updateError } = await supabase
-            .from('groupages')
-            .update({ container_id: null })
-            .eq('id', reservationToDelete.id);
-
-          if (updateError) throw updateError;
-        }
-
-        // Puis supprimer le groupage
-        const { error: groupageError } = await supabase
-          .from('groupages')
-          .delete()
-          .eq('id', reservationToDelete.id);
-
-        if (groupageError) throw groupageError;
-
-        // Enfin supprimer le conteneur associé s'il existe
-        if (groupageData?.container_id) {
-          const { error: containerError } = await supabase
-            .from('containers')
-            .delete()
-            .eq('id', groupageData.container_id);
-
-          if (containerError) throw containerError;
-        }
-      } else {
-        // Supprimer le conteneur classique
-        const { error } = await supabase
-          .from('containers')
-          .delete()
-          .eq('id', reservationToDelete.id);
-
-        if (error) throw error;
-      }
-
-      toast({ title: "Succès", description: "Réservation supprimée avec succès" });
-      setDeleteDialogOpen(false);
-      setReservationToDelete(null);
-      fetchData();
+      toast({ 
+        title: "Succès", 
+        description: "Réservation supprimée avec succès" 
+      });
+      setIsDeleteDialogOpen(false);
+      setSelectedReservation(null);
+      await fetchData();
     } catch (error) {
-      console.error('Error deleting reservation:', error);
-      toast({ title: "Erreur", description: "Erreur lors de la suppression", variant: "destructive" });
+      console.error('Erreur lors de la suppression de la réservation:', error);
+      toast({ 
+        title: "Erreur", 
+        description: "Erreur lors de la suppression de la réservation", 
+        variant: "destructive" 
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Layout title="Réservations de Transport">
-      <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Réservations de Transport</h1>
-          <Button onClick={() => setIsCreateReservationOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
+    <Layout title="Réservations">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Réservations</h1>
+          <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
             Nouvelle Réservation
           </Button>
         </div>
 
         {/* Filtres */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Rechercher..."
                   value={searchTerm}
@@ -560,26 +416,30 @@ export default function Reservations() {
                 />
               </div>
               
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous types</SelectItem>
-                  {RESERVATION_TYPES.map(type => (
-                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tous statuts</SelectItem>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
                   {RESERVATION_STATUSES.map(status => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les types</SelectItem>
+                  {RESERVATION_TYPES.map(type => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -589,375 +449,355 @@ export default function Reservations() {
                   <SelectValue placeholder="Transitaire" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tous transitaires</SelectItem>
-                  {transitaires.map(t => (
-                    <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>
+                  <SelectItem value="all">Tous les transitaires</SelectItem>
+                  {transitaires.map(transitaire => (
+                    <SelectItem key={transitaire.name} value={transitaire.name}>
+                      {transitaire.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-
-              <div className="text-sm text-muted-foreground flex items-center">
-                {filteredReservations.length} réservation(s)
-              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Table des réservations */}
+        {/* Tableau des réservations */}
         <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>N° Réservation</TableHead>
-                  <TableHead>N° Conteneur</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Transitaire</TableHead>
-                  <TableHead>Capacités</TableHead>
-                  <TableHead>Disponible</TableHead>
-                  <TableHead>Dates</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
+          <CardHeader>
+            <CardTitle>Liste des Réservations ({filteredReservations.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8">
-                      Chargement...
-                    </TableCell>
+                    <TableHead>N° Réservation</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Transitaire</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Palettes</TableHead>
+                    <TableHead>Poids (kg)</TableHead>
+                    <TableHead>Volume (m³)</TableHead>
+                    <TableHead>ETD</TableHead>
+                    <TableHead>ETA</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ) : filteredReservations.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                      Aucune réservation trouvée
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredReservations.map((reservation) => {
-                    const usedPallets = reservation.max_pallets - reservation.available_pallets;
-                    const usagePercentage = reservation.max_pallets > 0 ? (usedPallets / reservation.max_pallets) * 100 : 0;
-
-                     return (
-                       <TableRow key={reservation.id}>
-                         <TableCell>
-                           <div className="font-medium">{reservation.reservation_number || "N/A"}</div>
-                         </TableCell>
-                         <TableCell>
-                           <div className="font-medium">{reservation.container_number}</div>
-                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{getTypeLabel(reservation.type)}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{reservation.transitaire}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div>{reservation.max_pallets} pal</div>
-                            <div className="text-muted-foreground">
-                              {(reservation.max_weight/1000).toFixed(1)}T • {reservation.max_volume}m³
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-sm">
-                              <span>{reservation.available_pallets}/{reservation.max_pallets}</span>
-                              <Progress value={100 - usagePercentage} className="w-20 h-2" />
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {(reservation.available_weight/1000).toFixed(1)}T • {reservation.available_volume.toFixed(1)}m³
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div>ETD: {reservation.etd ? new Date(reservation.etd).toLocaleDateString() : "TBD"}</div>
-                            <div className="text-muted-foreground">
-                              ETA: {reservation.eta ? new Date(reservation.eta).toLocaleDateString() : "TBD"}
-                            </div>
-                          </div>
-                        </TableCell>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-8">
+                        Chargement...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredReservations.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-8">
+                        Aucune réservation trouvée
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredReservations.map((reservation) => (
+                      <TableRow key={reservation.id}>
+                        <TableCell>{reservation.reservation_number}</TableCell>
+                        <TableCell>{getTypeLabel(reservation.type)}</TableCell>
+                        <TableCell>{reservation.transitaire}</TableCell>
                         <TableCell>{getStatusBadge(reservation.status)}</TableCell>
                         <TableCell>
-                           <div className="flex items-center gap-2">
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={() => {
-                                 setSelectedReservation(reservation);
-                                 setIsViewReservationOpen(true);
-                               }}
-                               title="Voir et modifier la réservation"
-                             >
-                               <Eye className="h-4 w-4" />
-                             </Button>
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={() => handleLoadingPlan(reservation)}
-                               title="Plan de chargement"
-                             >
-                               <Package className="h-4 w-4" />
-                             </Button>
-                             <Button
-                               variant="outline"
-                               size="sm"
-                               onClick={() => {
-                                 setReservationToDelete(reservation);
-                                 setDeleteDialogOpen(true);
-                               }}
-                               title="Supprimer la réservation"
-                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                             >
-                               <Trash2 className="h-4 w-4" />
-                             </Button>
-                           </div>
+                          {reservation.type === 'groupage' ? 
+                            `${reservation.available_pallets}/${reservation.max_pallets}` : 
+                            reservation.max_pallets
+                          }
+                        </TableCell>
+                        <TableCell>
+                          {reservation.type === 'groupage' ? 
+                            `${reservation.available_weight}/${reservation.max_weight}` : 
+                            reservation.max_weight
+                          }
+                        </TableCell>
+                        <TableCell>
+                          {reservation.type === 'groupage' ? 
+                            `${reservation.available_volume}/${reservation.max_volume}` : 
+                            reservation.max_volume
+                          }
+                        </TableCell>
+                        <TableCell>{reservation.etd ? new Date(reservation.etd).toLocaleDateString() : '-'}</TableCell>
+                        <TableCell>{reservation.eta ? new Date(reservation.eta).toLocaleDateString() : '-'}</TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedReservation(reservation);
+                                setIsViewDialogOpen(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedReservation(reservation);
+                                setIsEditDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleLoadingPlan(reservation)}
+                            >
+                              <Package className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedReservation(reservation);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 
         {/* Dialog de création */}
-        <Dialog open={isCreateReservationOpen} onOpenChange={setIsCreateReservationOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Nouvelle Réservation</DialogTitle>
+              <DialogTitle>Créer une Nouvelle Réservation</DialogTitle>
             </DialogHeader>
-
-            <form onSubmit={createReservationForm.handleSubmit(handleCreateReservation)} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={form.handleSubmit(handleCreateReservation)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Numéro de réservation</Label>
-                  <div className="p-2 bg-muted rounded-md text-sm text-muted-foreground">
-                    Généré automatiquement à la création (ex: RES-0011)
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="container_number">Numéro de conteneur</Label>
-                  <Input
-                    id="container_number"
-                    placeholder="Ex: MSKU1234567"
-                    {...createReservationForm.register('container_number', { required: true })}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="type">Type</Label>
+                  <Label htmlFor="type">Type de Réservation</Label>
                   <Select 
-                    value={createReservationForm.watch('type')} 
                     onValueChange={(value) => {
-                      createReservationForm.setValue('type', value as any);
+                      form.setValue('type', value);
                       handleTypeChange(value);
                     }}
+                    defaultValue={form.watch('type')}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {RESERVATION_TYPES.map(type => (
-                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="transitaire">Transitaire</Label>
+                  <Select onValueChange={(value) => form.setValue('transitaire', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un transitaire" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {transitaires.map(transitaire => (
+                        <SelectItem key={transitaire.name} value={transitaire.name}>
+                          {transitaire.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="transitaire">Transitaire</Label>
-                <Select 
-                  value={createReservationForm.watch('transitaire')} 
-                  onValueChange={(value) => createReservationForm.setValue('transitaire', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un transitaire" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {transitaires.map(t => (
-                      <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="max_pallets">Palettes max</Label>
+                  <Label htmlFor="max_pallets">Max Palettes</Label>
                   <Input
-                    id="max_pallets"
+                    {...form.register('max_pallets')}
                     type="number"
-                    {...createReservationForm.register('max_pallets', { required: true })}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="max_weight">Poids max (kg)</Label>
+                  <Label htmlFor="max_weight">Max Poids (kg)</Label>
                   <Input
-                    id="max_weight"
+                    {...form.register('max_weight')}
                     type="number"
-                    {...createReservationForm.register('max_weight', { required: true })}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="max_volume">Volume max (m³)</Label>
+                  <Label htmlFor="max_volume">Max Volume (m³)</Label>
                   <Input
-                    id="max_volume"
+                    {...form.register('max_volume')}
                     type="number"
-                    step="0.1"
-                    {...createReservationForm.register('max_volume', { required: true })}
+                    step="0.01"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {form.watch('type') === 'groupage' && (
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="cost_per_palette">Coût par Palette (€)</Label>
+                    <Input
+                      {...form.register('cost_per_palette')}
+                      type="number"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="cost_per_kg">Coût par Kg (€)</Label>
+                    <Input
+                      {...form.register('cost_per_kg')}
+                      type="number"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="cost_per_m3">Coût par m³ (€)</Label>
+                    <Input
+                      {...form.register('cost_per_m3')}
+                      type="number"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="etd">Date de départ (ETD)</Label>
+                  <Label htmlFor="etd">ETD</Label>
                   <Input
-                    id="etd"
+                    {...form.register('etd')}
                     type="date"
-                    {...createReservationForm.register('etd')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="eta">Date d'arrivée (ETA)</Label>
+                  <Label htmlFor="eta">ETA</Label>
                   <Input
-                    id="eta"
+                    {...form.register('eta')}
                     type="date"
-                    {...createReservationForm.register('eta')}
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="departure_port">Port de départ</Label>
-                  <Input
-                    id="departure_port"
-                    placeholder="Ex: Le Havre, Terminal De France"
-                    {...createReservationForm.register('departure_port')}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="arrival_port">Port d'arrivée</Label>
-                  <Input
-                    id="arrival_port"
-                    placeholder="Ex: Dakar, DP World Terminal"
-                    {...createReservationForm.register('arrival_port')}
-                  />
-                </div>
-              </div>
+              {form.watch('type') !== 'groupage' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="departure_port">Port de Départ</Label>
+                      <Input {...form.register('departure_port')} />
+                    </div>
+                    <div>
+                      <Label htmlFor="arrival_port">Port d'Arrivée</Label>
+                      <Input {...form.register('arrival_port')} />
+                    </div>
+                  </div>
 
-              <div>
-                <Label htmlFor="port_cutoff">Cut-off portuaire</Label>
-                <Input
-                  id="port_cutoff"
-                  type="datetime-local"
-                  {...createReservationForm.register('port_cutoff')}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Date et heure limite à laquelle les marchandises doivent être déposées au port
-                </p>
-              </div>
+                  <div>
+                    <Label htmlFor="port_cutoff">Date Limite Port</Label>
+                    <Input
+                      {...form.register('port_cutoff')}
+                      type="datetime-local"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="flex items-center space-x-2">
                 <Checkbox
-                  id="dangerous_goods_accepted"
-                  checked={createReservationForm.watch('dangerous_goods_accepted')}
-                  onCheckedChange={(checked) => createReservationForm.setValue('dangerous_goods_accepted', !!checked)}
+                  id="dangerous_goods"
+                  {...form.register('dangerous_goods')}
                 />
-                <Label htmlFor="dangerous_goods_accepted" className="text-sm">
-                  Ce conteneur peut-il transporter des marchandises dangereuses ?
-                </Label>
+                <Label htmlFor="dangerous_goods">Marchandises Dangereuses</Label>
               </div>
 
               <div>
                 <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Remarques particulières..."
-                  {...createReservationForm.register('notes')}
-                />
+                <Textarea {...form.register('notes')} />
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsCreateReservationOpen(false)}>
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                   Annuler
                 </Button>
-                <Button type="submit">Créer la réservation</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Création..." : "Créer"}
+                </Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
 
-        <LoadingPlan
-          isOpen={isLoadingPlanOpen}
-          onClose={() => setIsLoadingPlanOpen(false)}
-          container={selectedReservation?.type !== 'groupage' ? {
-            id: selectedReservation?.id || '',
-            number: selectedReservation?.container_number || '',
-            type: selectedReservation?.type || '',
-            transitaire: selectedReservation?.transitaire || '',
-            max_weight: selectedReservation?.max_weight || 0,
-            max_volume: selectedReservation?.max_volume || 0,
-            max_pallets: selectedReservation?.max_pallets || 0,
-            dangerous_goods: selectedReservation?.dangerous_goods_accepted || false
-          } : undefined}
-          groupage={selectedReservation?.type === 'groupage' ? {
-            id: selectedReservation?.id || '',
-            transitaire: selectedReservation?.transitaire || '',
-            max_space_pallets: selectedReservation?.max_pallets || 0,
-            available_space_pallets: selectedReservation?.available_pallets || 0,
-            max_weight: selectedReservation?.max_weight || 0,
-            available_weight: selectedReservation?.available_weight || 0,
-            max_volume: selectedReservation?.max_volume || 0,
-            available_volume: selectedReservation?.available_volume || 0,
-            allows_dangerous_goods: selectedReservation?.dangerous_goods_accepted || false,
-            status: selectedReservation?.status || '',
-            container_id: selectedReservation?.id || ''
-          } : undefined}
-          type={selectedReservation?.type === 'groupage' ? 'groupage' : 'container'}
-        />
-
-        {/* Dialog de vue/modification de réservation */}
-        <Dialog open={isViewReservationOpen} onOpenChange={setIsViewReservationOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Modifier la réservation - {selectedReservation?.container_number}</DialogTitle>
-            </DialogHeader>
-
-            {selectedReservation && (
-              <EditReservationForm
-                reservation={selectedReservation}
-                transitaires={transitaires}
-                onSave={async (data) => {
-                  await handleUpdateReservation(data);
-                  setIsViewReservationOpen(false);
-                }}
-                onCancel={() => setIsViewReservationOpen(false)}
-                onOpenLoadingPlan={() => {
-                  setIsViewReservationOpen(false);
-                  handleLoadingPlan(selectedReservation);
-                }}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
+        {/* Dialog d'édition */}
+        {selectedReservation && (
+          <EditReservationForm
+            reservation={{
+              ...selectedReservation,
+              container_number: selectedReservation.reservation_number || 'N/A',
+              type: selectedReservation.type,
+              dangerous_goods_accepted: selectedReservation.dangerous_goods_accepted || false
+            }}
+            transitaires={transitaires}
+            onSave={handleUpdateReservation}
+            onCancel={() => setIsEditDialogOpen(false)}
+            onOpenLoadingPlan={() => {
+              setIsEditDialogOpen(false);
+              setIsLoadingPlanOpen(true);
+            }}
+          />
+        )}
 
         {/* Dialog de confirmation de suppression */}
         <ConfirmationDialog
-          open={deleteDialogOpen}
-          onOpenChange={setDeleteDialogOpen}
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
           onConfirm={handleDeleteReservation}
-          title="Supprimer la réservation"
-          description={`Êtes-vous sûr de vouloir supprimer la réservation ${reservationToDelete?.container_number} ? Cette action est irréversible.`}
-          confirmText="Supprimer"
-          cancelText="Annuler"
+          title="Confirmer la suppression"
+          description="Êtes-vous sûr de vouloir supprimer cette réservation ? Cette action est irréversible."
         />
+
+        {/* Dialog du plan de chargement */}
+        {selectedReservation && (
+          <LoadingPlan
+            isOpen={isLoadingPlanOpen}
+            onClose={() => setIsLoadingPlanOpen(false)}
+            type={selectedReservation.type === 'groupage' ? 'groupage' : 'container'}
+            container={selectedReservation.type !== 'groupage' ? {
+              id: selectedReservation.id,
+              number: selectedReservation.reservation_number || 'N/A',
+              type: selectedReservation.type,
+              transitaire: selectedReservation.transitaire,
+              max_weight: selectedReservation.max_weight,
+              max_volume: selectedReservation.max_volume,
+              max_pallets: selectedReservation.max_pallets,
+              dangerous_goods: selectedReservation.dangerous_goods_accepted || false
+            } : undefined}
+            groupage={selectedReservation.type === 'groupage' ? {
+              id: selectedReservation.id,
+              container_id: selectedReservation.id, // Use reservation id as container_id
+              transitaire: selectedReservation.transitaire,
+              max_space_pallets: selectedReservation.max_pallets,
+              available_space_pallets: selectedReservation.available_pallets,
+              max_weight: selectedReservation.max_weight,
+              available_weight: selectedReservation.available_weight,
+              max_volume: selectedReservation.max_volume,
+              available_volume: selectedReservation.available_volume,
+              allows_dangerous_goods: selectedReservation.dangerous_goods_accepted || false,
+              status: selectedReservation.status
+            } : undefined}
+          />
+        )}
       </div>
     </Layout>
   );

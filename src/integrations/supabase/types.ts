@@ -271,6 +271,7 @@ export type Database = {
           id: string
           order_id: string
           palettes_booked: number
+          reservation_id: string | null
           transitaire_notes: string | null
           updated_at: string
           volume_booked: number
@@ -287,6 +288,7 @@ export type Database = {
           id?: string
           order_id: string
           palettes_booked?: number
+          reservation_id?: string | null
           transitaire_notes?: string | null
           updated_at?: string
           volume_booked?: number
@@ -303,6 +305,7 @@ export type Database = {
           id?: string
           order_id?: string
           palettes_booked?: number
+          reservation_id?: string | null
           transitaire_notes?: string | null
           updated_at?: string
           volume_booked?: number
@@ -498,6 +501,7 @@ export type Database = {
           packaging: string | null
           payment_date: string | null
           payment_type: string
+          reservation_id: string | null
           status: string
           supplier: string
           supplier_payment_status: string | null
@@ -526,6 +530,7 @@ export type Database = {
           packaging?: string | null
           payment_date?: string | null
           payment_type: string
+          reservation_id?: string | null
           status: string
           supplier: string
           supplier_payment_status?: string | null
@@ -554,6 +559,7 @@ export type Database = {
           packaging?: string | null
           payment_date?: string | null
           payment_type?: string
+          reservation_id?: string | null
           status?: string
           supplier?: string
           supplier_payment_status?: string | null
@@ -847,6 +853,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      reservations: {
+        Row: {
+          arrival_port: string | null
+          available_pallets: number | null
+          available_volume: number | null
+          available_weight: number | null
+          cost_per_kg: number | null
+          cost_per_m3: number | null
+          cost_per_palette: number | null
+          created_at: string
+          dangerous_goods_accepted: boolean | null
+          departure_port: string | null
+          eta: string | null
+          etd: string | null
+          id: string
+          max_pallets: number | null
+          max_volume: number | null
+          max_weight: number | null
+          notes: string | null
+          port_cutoff: string | null
+          reservation_number: string | null
+          status: string | null
+          transitaire: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          arrival_port?: string | null
+          available_pallets?: number | null
+          available_volume?: number | null
+          available_weight?: number | null
+          cost_per_kg?: number | null
+          cost_per_m3?: number | null
+          cost_per_palette?: number | null
+          created_at?: string
+          dangerous_goods_accepted?: boolean | null
+          departure_port?: string | null
+          eta?: string | null
+          etd?: string | null
+          id?: string
+          max_pallets?: number | null
+          max_volume?: number | null
+          max_weight?: number | null
+          notes?: string | null
+          port_cutoff?: string | null
+          reservation_number?: string | null
+          status?: string | null
+          transitaire: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          arrival_port?: string | null
+          available_pallets?: number | null
+          available_volume?: number | null
+          available_weight?: number | null
+          cost_per_kg?: number | null
+          cost_per_m3?: number | null
+          cost_per_palette?: number | null
+          created_at?: string
+          dangerous_goods_accepted?: boolean | null
+          departure_port?: string | null
+          eta?: string | null
+          etd?: string | null
+          id?: string
+          max_pallets?: number | null
+          max_volume?: number | null
+          max_weight?: number | null
+          notes?: string | null
+          port_cutoff?: string | null
+          reservation_number?: string | null
+          status?: string | null
+          transitaire?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       suppliers: {
         Row: {
