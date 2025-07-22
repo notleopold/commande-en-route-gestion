@@ -9,7 +9,7 @@ import Auth from "./pages/Auth";
 import Suppliers from "./pages/Suppliers";
 import SupplierDetail from "./pages/SupplierDetail";
 import OrderDetail from "./pages/OrderDetail";
-
+import ReservationDetail from "./pages/ReservationDetail";
 import ProductDetail from "./pages/ProductDetail";
 import Products from "./pages/Products";
 import Clients from "./pages/Clients";
@@ -49,6 +49,7 @@ const App = () => {
           <Route path="/containers" element={<Navigate to="/reservations" replace />} />
           <Route path="/groupage" element={<Navigate to="/reservations" replace />} />
           <Route path="/reservations" element={<Reservations />} />
+          <Route path="/reservations/:id" element={<ReservationDetail />} />
           <Route path="/documents" element={<Documents />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />

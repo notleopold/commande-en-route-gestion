@@ -528,10 +528,7 @@ export default function Reservations() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                setSelectedReservation(reservation);
-                                setIsViewDialogOpen(true);
-                              }}
+                              onClick={() => window.open(`/reservations/${reservation.id}`, '_blank')}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
