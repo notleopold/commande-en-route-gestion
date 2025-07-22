@@ -322,7 +322,14 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
     if (type === 'container') {
       const totalWeight = assignedOrders.reduce((sum, order) => sum + (order.weight || 0), 0);
       const totalVolume = assignedOrders.reduce((sum, order) => sum + (order.volume || 0), 0);
-      const totalValue = assignedOrders.reduce((sum, order) => sum + (order.total_ttc || 0), 0);
+      console.log('Assigned orders for total calculation:', assignedOrders);
+      console.log('Total TTC values:', assignedOrders.map(order => ({ id: order.id, order_number: order.order_number, total_ttc: order.total_ttc })));
+      const totalValue = assignedOrders.reduce((sum, order) => {
+        const ttc = Number(order.total_ttc) || 0;
+        console.log(`Order ${order.order_number}: total_ttc=${order.total_ttc}, converted=${ttc}`);
+        return sum + ttc;
+      }, 0);
+      console.log('Final total value:', totalValue);
       const totalPallets = assignedOrders.reduce((sum, order) => {
         return sum + (order.cartons ? Math.ceil(order.cartons / 20) : 1);
       }, 0);
