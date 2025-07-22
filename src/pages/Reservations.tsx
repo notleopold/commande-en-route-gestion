@@ -277,32 +277,11 @@ export default function Reservations() {
       const containerNumber = data.container_number;
 
       if (data.type === 'groupage') {
-        // Créer le conteneur d'abord
-        const { data: containerData, error: containerError } = await supabase
-          .from('containers')
-          .insert([{
-            number: containerNumber,
-            reservation_number: reservationNumber,
-            type: 'groupage',
-            transitaire: data.transitaire,
-            status: 'planning',
-            etd: data.etd || null,
-            eta: data.eta || null,
-            max_pallets: maxPallets,
-            max_weight: maxWeight,
-            max_volume: maxVolume,
-            dangerous_goods: data.dangerous_goods_accepted
-          }])
-          .select()
-          .single();
-
-        if (containerError) throw containerError;
-
-        // Puis créer le groupage
+        // Créer seulement le groupage (pas de conteneur)
         const { error: groupageError } = await supabase
           .from('groupages')
           .insert([{
-            container_id: containerData.id,
+            container_id: null, // Pas de conteneur associé
             reservation_number: reservationNumber,
             transitaire: data.transitaire,
             max_space_pallets: maxPallets,
@@ -492,7 +471,14 @@ export default function Reservations() {
 
     try {
       if (reservationToDelete.type === 'groupage') {
-        // Supprimer le groupage d'abord
+        // Récupérer le container_id AVANT la suppression
+        const { data: groupageData } = await supabase
+          .from('groupages')
+          .select('container_id')
+          .eq('id', reservationToDelete.id)
+          .single();
+
+        // Supprimer le groupage
         const { error: groupageError } = await supabase
           .from('groupages')
           .delete()
@@ -500,18 +486,12 @@ export default function Reservations() {
 
         if (groupageError) throw groupageError;
 
-        // Puis supprimer le conteneur associé
-        const { data: groupages } = await supabase
-          .from('groupages')
-          .select('container_id')
-          .eq('id', reservationToDelete.id)
-          .single();
-
-        if (groupages?.container_id) {
+        // Supprimer le conteneur associé s'il existe
+        if (groupageData?.container_id) {
           const { error: containerError } = await supabase
             .from('containers')
             .delete()
-            .eq('id', groupages.container_id);
+            .eq('id', groupageData.container_id);
 
           if (containerError) throw containerError;
         }
