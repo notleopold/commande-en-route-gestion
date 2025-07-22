@@ -9,11 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Edit, Archive, FileText, AlertTriangle, Package, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Archive, FileText, AlertTriangle, Package, Trash2, Info } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -826,24 +827,30 @@ export default function Products() {
                     onClick={() => navigate(`/products/${product.id}`)}
                   >
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <div className="font-medium">{product.name}</div>
-                          {product.dangerous && (
-                            <div className="flex gap-1">
-                              <Badge variant="destructive" className="text-xs">
-                                <AlertTriangle className="mr-1 h-3 w-3" />
-                                Dangereux
-                              </Badge>
-                              {product.imdg_class && (
-                                <Badge variant="outline" className="text-xs">
-                                  {product.imdg_class}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                       <div className="flex items-center gap-2">
+                         <div className="font-medium">{product.name}</div>
+                         {product.dangerous && (
+                           <TooltipProvider>
+                             <Tooltip>
+                               <TooltipTrigger asChild>
+                                 <div className="flex items-center justify-center w-5 h-5 bg-destructive rounded-full cursor-help">
+                                   <AlertTriangle className="h-3 w-3 text-destructive-foreground" />
+                                 </div>
+                               </TooltipTrigger>
+                               <TooltipContent>
+                                 <div className="text-sm">
+                                   <div className="font-medium">Matière dangereuse</div>
+                                   {product.imdg_class && (
+                                     <div className="text-muted-foreground">
+                                       Classe IMDG: {product.imdg_class}
+                                     </div>
+                                   )}
+                                 </div>
+                               </TooltipContent>
+                             </Tooltip>
+                           </TooltipProvider>
+                         )}
+                       </div>
                     </TableCell>
                     <TableCell>{product.category}</TableCell>
                     <TableCell>{product.sku}</TableCell>
