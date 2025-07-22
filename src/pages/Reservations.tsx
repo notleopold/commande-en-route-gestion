@@ -236,11 +236,11 @@ export default function Reservations() {
           available_pallets: data.type === 'groupage' ? (data.max_pallets || TYPE_CONFIGS.groupage.pallets) : 0,
           available_weight: data.type === 'groupage' ? (data.max_weight || TYPE_CONFIGS.groupage.weight) : 0,
           available_volume: data.type === 'groupage' ? (data.max_volume || TYPE_CONFIGS.groupage.volume) : 0,
-          etd: data.etd,
-          eta: data.eta,
-          departure_port: data.departure_port,
-          arrival_port: data.arrival_port,
-          port_cutoff: data.port_cutoff,
+          etd: data.etd || null,
+          eta: data.eta || null,
+          departure_port: data.departure_port || null,
+          arrival_port: data.arrival_port || null,
+          port_cutoff: data.port_cutoff || null,
           dangerous_goods_accepted: data.dangerous_goods || false,
           cost_per_palette: data.type === 'groupage' ? (data.cost_per_palette || 0) : 0,
           cost_per_kg: data.type === 'groupage' ? (data.cost_per_kg || 0) : 0,
@@ -691,28 +691,24 @@ export default function Reservations() {
                 </div>
               </div>
 
-              {form.watch('type') !== 'groupage' && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="departure_port">Port de Départ</Label>
-                      <Input {...form.register('departure_port')} />
-                    </div>
-                    <div>
-                      <Label htmlFor="arrival_port">Port d'Arrivée</Label>
-                      <Input {...form.register('arrival_port')} />
-                    </div>
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="departure_port">Port de Départ</Label>
+                  <Input {...form.register('departure_port')} />
+                </div>
+                <div>
+                  <Label htmlFor="arrival_port">Port d'Arrivée</Label>
+                  <Input {...form.register('arrival_port')} />
+                </div>
+              </div>
 
-                  <div>
-                    <Label htmlFor="port_cutoff">Date Limite Port</Label>
-                    <Input
-                      {...form.register('port_cutoff')}
-                      type="datetime-local"
-                    />
-                  </div>
-                </>
-              )}
+              <div>
+                <Label htmlFor="port_cutoff">Date Limite Port</Label>
+                <Input
+                  {...form.register('port_cutoff')}
+                  type="datetime-local"
+                />
+              </div>
 
               <div className="flex items-center space-x-2">
                 <Checkbox
