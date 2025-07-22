@@ -18,19 +18,13 @@ export function useCategories() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('products')
-        .select('category')
-        .not('category', 'is', null)
-        .neq('category', '');
+        .from('categories')
+        .select('name')
+        .order('name');
 
       if (error) throw error;
       
-      // Filter out any empty strings and null values
-      const uniqueCategories = [...new Set(
-        data?.map(item => item.category)
-          .filter(category => category && category.trim() !== '') || []
-      )];
-      setCategories(uniqueCategories.sort());
+      setCategories(data?.map(item => item.name) || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error("Erreur lors du chargement des catégories");
@@ -53,10 +47,13 @@ export function useCategories() {
     }
 
     try {
-      // Since we don't have a dedicated categories table, we'll add this to our local state
-      // The category will be saved when a product uses it
-      const updatedCategories = [...categories, trimmedCategory].sort();
-      setCategories(updatedCategories);
+      const { error } = await supabase
+        .from('categories')
+        .insert({ name: trimmedCategory });
+
+      if (error) throw error;
+
+      await fetchCategories(); // Refresh the list
       toast.success(`Catégorie "${trimmedCategory}" créée avec succès`);
       return true;
     } catch (error) {
@@ -84,20 +81,23 @@ export function useCategories() {
     }
 
     try {
+      // Update the category in the categories table
+      const { error: categoryError } = await supabase
+        .from('categories')
+        .update({ name: trimmedNewName })
+        .eq('name', oldName);
+
+      if (categoryError) throw categoryError;
+
       // Update all products that use this category
-      const { error } = await supabase
+      const { error: productsError } = await supabase
         .from('products')
         .update({ category: trimmedNewName })
         .eq('category', oldName);
 
-      if (error) throw error;
+      if (productsError) throw productsError;
 
-      // Update local state
-      const updatedCategories = categories.map(cat => 
-        cat === oldName ? trimmedNewName : cat
-      ).sort();
-      setCategories(updatedCategories);
-      
+      await fetchCategories(); // Refresh the list
       toast.success(`Catégorie "${oldName}" renommée en "${trimmedNewName}"`);
       return true;
     } catch (error) {
@@ -122,10 +122,15 @@ export function useCategories() {
         return false;
       }
 
-      // Remove from local state
-      const updatedCategories = categories.filter(cat => cat !== categoryName);
-      setCategories(updatedCategories);
-      
+      // Delete from categories table
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('name', categoryName);
+
+      if (error) throw error;
+
+      await fetchCategories(); // Refresh the list
       toast.success(`Catégorie "${categoryName}" supprimée avec succès`);
       return true;
     } catch (error) {

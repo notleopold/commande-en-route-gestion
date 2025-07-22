@@ -62,7 +62,7 @@ interface Product {
   palette_type?: string;
 }
 
-const categories = ["Informatique", "Chimie", "Mécanique", "Électronique", "Mobilier"];
+
 const units = ["pièce", "kg", "litre", "mètre", "boîte"];
 const imdgClasses = [
   "Classe 1 – Explosifs", "Classe 2.1 – Gaz inflammables", "Classe 2.2 – Gaz non inflammables", 
