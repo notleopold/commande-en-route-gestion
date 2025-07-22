@@ -108,6 +108,7 @@ export default function Reservations() {
   // Forms
   const createReservationForm = useForm({
     defaultValues: {
+      container_number: "",
       type: "40_feet",
       transitaire: "",
       max_pallets: "33",
@@ -272,8 +273,8 @@ export default function Reservations() {
       const reservationNumber = await generateReservationNumber();
       if (!reservationNumber) return;
 
-      // Générer aussi un numéro de conteneur simple
-      const containerNumber = `CONT-${Date.now()}`;
+      // Utiliser le numéro de conteneur saisi par l'utilisateur
+      const containerNumber = data.container_number;
 
       if (data.type === 'groupage') {
         // Créer le conteneur d'abord
@@ -739,10 +740,12 @@ export default function Reservations() {
                   </div>
                 </div>
                 <div>
-                  <Label>Numéro de conteneur</Label>
-                  <div className="p-2 bg-muted rounded-md text-sm text-muted-foreground">
-                    Généré automatiquement à la création
-                  </div>
+                  <Label htmlFor="container_number">Numéro de conteneur</Label>
+                  <Input
+                    id="container_number"
+                    placeholder="Ex: MSKU1234567"
+                    {...createReservationForm.register('container_number', { required: true })}
+                  />
                 </div>
 
                 <div>
