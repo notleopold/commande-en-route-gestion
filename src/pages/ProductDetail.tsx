@@ -66,6 +66,11 @@ export default function ProductDetail() {
   const [suppliers, setSuppliers] = useState<{id: string, name: string}[]>([]);
   const [transitaires, setTransitaires] = useState<{id: string, name: string}[]>([]);
   const [newCategory, setNewCategory] = useState("");
+  const [supplierSearch, setSupplierSearch] = useState("");
+
+  const filteredSuppliers = suppliers.filter(supplier => 
+    supplier.name.toLowerCase().includes(supplierSearch.toLowerCase())
+  );
 
   const form = useForm<Product>({
     defaultValues: {
@@ -339,6 +344,71 @@ export default function ProductDetail() {
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="suppliers"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fournisseurs</FormLabel>
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {field.value?.map((supplierName: string) => (
+                            <Badge key={supplierName} variant="secondary" className="flex items-center gap-1">
+                              {supplierName}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const currentValue = field.value || [];
+                                  field.onChange(currentValue.filter((item: string) => item !== supplierName));
+                                }}
+                                className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center text-xs"
+                              >
+                                ×
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                        <Select onValueChange={(value) => {
+                          if (value && value !== "none") {
+                            const currentValue = field.value || [];
+                            if (!currentValue.includes(value)) {
+                              field.onChange([...currentValue, value]);
+                            }
+                          }
+                        }}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Ajouter un fournisseur" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <div className="p-2 border-b">
+                              <Input
+                                placeholder="Rechercher un fournisseur..."
+                                value={supplierSearch}
+                                onChange={(e) => setSupplierSearch(e.target.value)}
+                                className="h-8"
+                              />
+                            </div>
+                            {filteredSuppliers.length === 0 ? (
+                              <div className="p-2 text-sm text-muted-foreground">
+                                Aucun fournisseur trouvé
+                              </div>
+                            ) : (
+                              filteredSuppliers.map(supplier => (
+                                <SelectItem key={supplier.id} value={supplier.name}>
+                                  {supplier.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
