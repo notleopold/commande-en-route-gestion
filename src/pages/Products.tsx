@@ -8,7 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Edit, Archive, FileText, AlertTriangle, Package, Trash2 } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfirmationDialog } from "@/components/ConfirmationDialog";
@@ -72,18 +78,80 @@ export default function Products() {
   const navigate = useNavigate();
   const { categories } = useCategories();
   const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<{id: string, name: string}[]>([]);
+  const [transitaires, setTransitaires] = useState<{id: string, name: string}[]>([]);
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [transitaireSearch, setTransitaireSearch] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showArchived, setShowArchived] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [productToArchive, setProductToArchive] = useState<Product | null>(null);
 
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter(supplier => 
+      supplier.name.toLowerCase().includes(supplierSearch.toLowerCase())
+    );
+  }, [suppliers, supplierSearch]);
+
+  const filteredTransitaires = useMemo(() => {
+    return transitaires.filter(transitaire => 
+      transitaire.name.toLowerCase().includes(transitaireSearch.toLowerCase())
+    );
+  }, [transitaires, transitaireSearch]);
+
+
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      category: "",
+      sku: "",
+      dangerous: false,
+      imdg_class: "",
+      unit: "",
+      cost: "",
+      suppliers: [] as string[],
+      transitaire: "",
+      description: "",
+      // Package level
+      units_per_package: "",
+      package_dimensions_length: "",
+      package_dimensions_width: "",
+      package_dimensions_height: "",
+      package_weight: "",
+      package_volume: "",
+      package_material_code: "",
+      package_signage: "",
+      // Carton level
+      packages_per_carton: "",
+      units_per_carton: "",
+      carton_dimensions_length: "",
+      carton_dimensions_width: "",
+      carton_dimensions_height: "",
+      carton_weight: "",
+      carton_volume: "",
+      carton_material_code: "",
+      carton_signage: "",
+      // Palette level
+      cartons_per_layer: "",
+      cartons_per_palette: "",
+      layers_per_palette: "",
+      palette_dimensions_length: "",
+      palette_dimensions_width: "",
+      palette_dimensions_height: "",
+      palette_weight: "",
+      palette_type: "",
+    },
+  });
 
   useEffect(() => {
     fetchProducts();
+    fetchSuppliers();
+    fetchTransitaires();
   }, []);
 
   const fetchProducts = async () => {
@@ -113,12 +181,102 @@ export default function Products() {
     return matchesSearch && matchesCategory && matchesArchived;
   });
 
+  const fetchSuppliers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('id, name')
+        .eq('status', 'active')
+        .order('name');
+      
+      if (error) throw error;
+      setSuppliers(data || []);
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+    }
+  };
+
+  const fetchTransitaires = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('transitaires')
+        .select('id, name')
+        .eq('status', 'active')
+        .order('name');
+      
+      if (error) throw error;
+      setTransitaires(data || []);
+    } catch (error) {
+      console.error('Error fetching transitaires:', error);
+    }
+  };
+
   const handleAddProduct = () => {
-    navigate('/products/new');
+    form.reset();
+    setDialogOpen(true);
   };
 
   const handleEditProduct = (product: Product) => {
     navigate(`/products/${product.id}`);
+  };
+
+  const onSubmit = async (data: any) => {
+    try {
+      const productData = {
+        name: data.name,
+        category: data.category,
+        sku: data.sku,
+        dangerous: data.dangerous,
+        imdg_class: data.dangerous && data.imdg_class ? data.imdg_class : null,
+        unit: data.unit,
+        cost: parseFloat(data.cost),
+        suppliers: data.suppliers || [],
+        transitaire: data.transitaire === "none" ? null : data.transitaire || null,
+        description: data.description,
+        status: "active",
+        units_per_package: data.units_per_package ? parseInt(data.units_per_package) : null,
+        package_dimensions_length: data.package_dimensions_length ? parseFloat(data.package_dimensions_length) : null,
+        package_dimensions_width: data.package_dimensions_width ? parseFloat(data.package_dimensions_width) : null,
+        package_dimensions_height: data.package_dimensions_height ? parseFloat(data.package_dimensions_height) : null,
+        package_weight: data.package_weight ? parseFloat(data.package_weight) : null,
+        package_volume: data.package_volume ? parseFloat(data.package_volume) : null,
+        package_material_code: data.package_material_code || null,
+        package_signage: data.package_signage || null,
+        // Carton level
+        packages_per_carton: data.packages_per_carton ? parseInt(data.packages_per_carton) : null,
+        units_per_carton: data.units_per_carton ? parseInt(data.units_per_carton) : null,
+        carton_dimensions_length: data.carton_dimensions_length ? parseFloat(data.carton_dimensions_length) : null,
+        carton_dimensions_width: data.carton_dimensions_width ? parseFloat(data.carton_dimensions_width) : null,
+        carton_dimensions_height: data.carton_dimensions_height ? parseFloat(data.carton_dimensions_height) : null,
+        carton_weight: data.carton_weight ? parseFloat(data.carton_weight) : null,
+        carton_volume: data.carton_volume ? parseFloat(data.carton_volume) : null,
+        carton_material_code: data.carton_material_code || null,
+        carton_signage: data.carton_signage || null,
+        // Palette level
+        cartons_per_layer: data.cartons_per_layer ? parseInt(data.cartons_per_layer) : null,
+        cartons_per_palette: data.cartons_per_palette ? parseInt(data.cartons_per_palette) : null,
+        layers_per_palette: data.layers_per_palette ? parseInt(data.layers_per_palette) : null,
+        palette_dimensions_length: data.palette_dimensions_length ? parseFloat(data.palette_dimensions_length) : null,
+        palette_dimensions_width: data.palette_dimensions_width ? parseFloat(data.palette_dimensions_width) : null,
+        palette_dimensions_height: data.palette_dimensions_height ? parseFloat(data.palette_dimensions_height) : null,
+        palette_weight: data.palette_weight ? parseFloat(data.palette_weight) : null,
+        palette_type: data.palette_type || null,
+      };
+
+      const { error } = await supabase
+        .from('products')
+        .insert([productData]);
+
+      if (error) throw error;
+      toast.success("Produit ajouté avec succès");
+      
+      setDialogOpen(false);
+      form.reset();
+      fetchProducts(); // Refresh the list
+    } catch (error) {
+      console.error('Error saving product:', error);
+      toast.error("Erreur lors de l'enregistrement");
+    }
   };
 
   const handleArchiveProduct = async (productId: string) => {
@@ -270,10 +428,393 @@ export default function Products() {
             </div>
           </div>
           
-          <Button onClick={handleAddProduct}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nouveau Produit
-          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={handleAddProduct}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nouveau Produit
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Nouveau produit</DialogTitle>
+                <DialogDescription>
+                  Ajoutez un nouveau produit au catalogue
+                </DialogDescription>
+              </DialogHeader>
+              
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <Tabs defaultValue="general" className="w-full">
+                    <TabsList className="grid w-full grid-cols-4">
+                      <TabsTrigger value="general">Général</TabsTrigger>
+                      <TabsTrigger value="package">Package</TabsTrigger>
+                      <TabsTrigger value="carton">Carton</TabsTrigger>
+                      <TabsTrigger value="palette">Palette</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="general" className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nom du produit</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Nom du produit" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="sku"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>SKU</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Code SKU" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="category"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Catégorie</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner une catégorie" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {categories.map(category => (
+                                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="unit"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Unité</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner une unité" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {units.map(unit => (
+                                    <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="cost"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Coût (€)</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="dangerous"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>
+                                  Matière dangereuse
+                                </FormLabel>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      {form.watch("dangerous") && (
+                        <FormField
+                          control={form.control}
+                          name="imdg_class"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Classe IMDG</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner une classe IMDG" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {imdgClasses.map(imdgClass => (
+                                    <SelectItem key={imdgClass} value={imdgClass}>{imdgClass}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                      
+                       <FormField
+                          control={form.control}
+                          name="suppliers"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Fournisseurs</FormLabel>
+                              <div className="space-y-2">
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                  {field.value?.map((supplierName: string) => (
+                                    <Badge key={supplierName} variant="secondary" className="flex items-center gap-1">
+                                      {supplierName}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const currentValue = field.value || [];
+                                          field.onChange(currentValue.filter((item: string) => item !== supplierName));
+                                        }}
+                                        className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center text-xs"
+                                      >
+                                        ×
+                                      </button>
+                                    </Badge>
+                                  ))}
+                                </div>
+                                <Select onValueChange={(value) => {
+                                  if (value && value !== "none") {
+                                    const currentValue = field.value || [];
+                                    if (!currentValue.includes(value)) {
+                                      field.onChange([...currentValue, value]);
+                                    }
+                                  }
+                                }}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Ajouter un fournisseur" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <div className="p-2 border-b">
+                                      <Input
+                                        placeholder="Rechercher un fournisseur..."
+                                        value={supplierSearch}
+                                        onChange={(e) => setSupplierSearch(e.target.value)}
+                                        className="h-8"
+                                      />
+                                    </div>
+                                    {filteredSuppliers.length === 0 ? (
+                                      <div className="p-2 text-sm text-muted-foreground">
+                                        Aucun fournisseur trouvé
+                                      </div>
+                                    ) : (
+                                      filteredSuppliers.map(supplier => (
+                                        <SelectItem key={supplier.id} value={supplier.name}>
+                                          {supplier.name}
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Description du produit..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </TabsContent>
+
+                    {/* Autres onglets package, carton, palette avec leurs champs respectifs */}
+                    <TabsContent value="package" className="space-y-4">
+                      <div className="grid grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="units_per_package"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Unités par package</FormLabel>
+                              <FormControl>
+                                <Input type="number" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="package_weight"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Poids package (kg)</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="0.01" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="package_volume"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Volume package (m³)</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="0.001" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="carton" className="space-y-4">
+                      <div className="grid grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="packages_per_carton"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Packages par carton</FormLabel>
+                              <FormControl>
+                                <Input type="number" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="carton_weight"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Poids carton (kg)</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="0.01" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="carton_volume"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Volume carton (m³)</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="0.001" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="palette" className="space-y-4">
+                      <div className="grid grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="cartons_per_palette"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Cartons par palette</FormLabel>
+                              <FormControl>
+                                <Input type="number" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="palette_weight"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Poids palette (kg)</FormLabel>
+                              <FormControl>
+                                <Input type="number" step="0.01" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="palette_type"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Type de palette</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                  
+                  <div className="flex justify-end space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                      Annuler
+                    </Button>
+                    <Button type="submit">
+                      Créer le produit
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Table des produits */}
