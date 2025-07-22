@@ -24,6 +24,7 @@ interface Order {
   is_received: boolean;
   order_products?: any[];
   container_id?: string;
+  transitaire_entry_number?: string;
 }
 
 interface ContainerData {
@@ -431,23 +432,37 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
                     ) : (
                       <div className="space-y-3">
                         {assignedOrders.map(order => (
-                          <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div>
+                           <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex-1 cursor-pointer" onClick={() => window.open(`/orders/${order.id}`, '_blank')}>
                               <div className="font-medium">{order.order_number}</div>
                               <div className="text-sm text-muted-foreground">{order.supplier}</div>
+                              {order.transitaire_entry_number && (
+                                <div className="text-sm text-blue-600 font-medium">
+                                  N° entrée: {order.transitaire_entry_number}
+                                </div>
+                              )}
                               <div className="text-xs text-muted-foreground">
                                 {order.weight ? `${(order.weight / 1000).toFixed(1)}T` : ''} • 
                                 {order.volume ? ` ${order.volume.toFixed(1)}m³` : ''} • 
                                 {order.cartons ? ` ${order.cartons} cartons` : ''}
                               </div>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleRemoveOrder(order.id)}
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(`/orders/${order.id}`, '_blank')}
+                              >
+                                Ouvrir
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRemoveOrder(order.id)}
+                              >
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -458,9 +473,14 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
                     ) : (
                       <div className="space-y-3">
                         {groupageBookings.map(booking => (
-                          <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
-                            <div>
+                           <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex-1 cursor-pointer" onClick={() => window.open(`/orders/${booking.order_id}`, '_blank')}>
                               <div className="font-medium">{booking.orders?.order_number}</div>
+                              {booking.orders?.transitaire_entry_number && (
+                                <div className="text-sm text-blue-600 font-medium">
+                                  N° entrée: {booking.orders?.transitaire_entry_number}
+                                </div>
+                              )}
                               <div className="text-sm text-muted-foreground">{booking.orders?.supplier}</div>
                               <div className="text-xs text-muted-foreground">
                                 {booking.palettes_booked} pal • {(booking.weight_booked / 1000).toFixed(1)}T • {booking.volume_booked.toFixed(1)}m³
