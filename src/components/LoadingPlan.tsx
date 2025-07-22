@@ -83,6 +83,7 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [empotageConfirmed, setEmpotageConfirmed] = useState<Record<string, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState('');
   const bookingForm = useForm({
     defaultValues: {
       palettes_booked: '',
@@ -349,6 +350,13 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
     totalValue,
     totalPallets
   } = calculateTotals();
+  
+  // Filtrer les commandes disponibles selon la recherche
+  const filteredAvailableOrders = availableOrders.filter(order => 
+    order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  
   const title = type === 'container' ? `Plan de chargement - Conteneur ${container?.number}` : `Plan de chargement - Groupage`;
   return <>
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -501,8 +509,15 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
                   <CardTitle>Commandes disponibles</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {availableOrders.length === 0 ? <p className="text-muted-foreground text-center py-4">Aucune commande disponible</p> : <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {availableOrders.map(order => {
+                  <div className="mb-4">
+                    <Input
+                      placeholder="Rechercher par numéro de commande ou fournisseur..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  {filteredAvailableOrders.length === 0 ? <p className="text-muted-foreground text-center py-4">{searchTerm ? 'Aucune commande trouvée' : 'Aucune commande disponible'}</p> : <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {filteredAvailableOrders.map(order => {
                     const {
                       canAdd,
                       reason
