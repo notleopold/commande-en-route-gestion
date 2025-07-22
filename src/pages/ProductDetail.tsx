@@ -293,47 +293,6 @@ export default function ProductDetail() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="flex gap-2 mt-2">
-                        <Input
-                          placeholder="Nouvelle catégorie"
-                          value={newCategory}
-                          onChange={(e) => setNewCategory(e.target.value)}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              addNewCategory();
-                            }
-                          }}
-                        />
-                        <Button type="button" onClick={addNewCategory} size="sm">
-                          Créer & Sauvegarder
-                        </Button>
-                      </div>
-                      
-                      {/* Liste des catégories existantes avec boutons de suppression */}
-                      <div className="mt-3">
-                        <Label className="text-sm text-muted-foreground">Catégories existantes :</Label>
-                        {categories.length > 0 ? (
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            {categories.map((category) => (
-                              <div key={category} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-md text-sm">
-                                <span>{category}</span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-4 w-4 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                                  onClick={() => removeCategory(category)}
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground mt-1">Aucune catégorie disponible</p>
-                        )}
-                      </div>
                       
                       <FormMessage />
                     </FormItem>
