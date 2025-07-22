@@ -21,6 +21,7 @@ interface Order {
   volume?: number;
   cartons?: number;
   total_ttc?: number;
+  total_ht?: number;
   is_received: boolean;
   order_products?: any[];
   container_id?: string;
@@ -321,7 +322,7 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
     if (type === 'container') {
       const totalWeight = assignedOrders.reduce((sum, order) => sum + (order.weight || 0), 0);
       const totalVolume = assignedOrders.reduce((sum, order) => sum + (order.volume || 0), 0);
-      const totalValue = assignedOrders.reduce((sum, order) => sum + (order.total_ttc || 0), 0);
+      const totalValue = assignedOrders.reduce((sum, order) => sum + (order.total_ht || 0), 0);
       const totalPallets = assignedOrders.reduce((sum, order) => {
         return sum + (order.cartons ? Math.ceil(order.cartons / 20) : 1);
       }, 0);
@@ -334,7 +335,7 @@ export const LoadingPlan: React.FC<LoadingPlanProps> = ({
     } else {
       const totalWeight = groupageBookings.reduce((sum, booking) => sum + booking.weight_booked, 0);
       const totalVolume = groupageBookings.reduce((sum, booking) => sum + booking.volume_booked, 0);
-      const totalValue = groupageBookings.reduce((sum, booking) => sum + (booking.orders?.total_ttc || 0), 0);
+      const totalValue = groupageBookings.reduce((sum, booking) => sum + (booking.orders?.total_ht || 0), 0);
       const totalPallets = groupageBookings.reduce((sum, booking) => sum + booking.palettes_booked, 0);
       return {
         totalWeight,
