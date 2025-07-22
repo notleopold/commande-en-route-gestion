@@ -1045,6 +1045,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_order_totals: {
+        Args: { order_id_param: string }
+        Returns: undefined
+      }
       generate_next_number: {
         Args: { entity_type_param: string }
         Returns: string
