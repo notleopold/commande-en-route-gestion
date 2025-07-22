@@ -23,6 +23,7 @@ import { EditReservationForm } from "@/components/EditReservationForm";
 interface Reservation {
   id: string;
   container_number: string;
+  reservation_number?: string;
   type: '20_feet' | '40_feet' | 'groupage';
   transitaire: string;
   max_pallets: number;
@@ -165,6 +166,7 @@ export default function Reservations() {
       const containerReservations: Reservation[] = containers?.map(container => ({
         id: container.id,
         container_number: container.number,
+        reservation_number: container.reservation_number,
         type: container.type === '20_feet' ? '20_feet' : '40_feet',
         transitaire: container.transitaire,
         max_pallets: container.max_pallets || 33,
@@ -188,6 +190,7 @@ export default function Reservations() {
       const groupageReservations: Reservation[] = groupages?.map(groupage => ({
         id: groupage.id,
         container_number: groupage.containers?.number || 'N/A',
+        reservation_number: groupage.reservation_number,
         type: 'groupage' as const,
         transitaire: groupage.transitaire,
         max_pallets: groupage.max_space_pallets,
@@ -265,9 +268,12 @@ export default function Reservations() {
       const maxWeight = parseFloat(data.max_weight);
       const maxVolume = parseFloat(data.max_volume);
 
-      // Générer le numéro automatiquement
-      const containerNumber = await generateReservationNumber();
-      if (!containerNumber) return;
+      // Générer le numéro de réservation automatiquement
+      const reservationNumber = await generateReservationNumber();
+      if (!reservationNumber) return;
+
+      // Générer aussi un numéro de conteneur simple
+      const containerNumber = `CONT-${Date.now()}`;
 
       if (data.type === 'groupage') {
         // Créer le conteneur d'abord
@@ -275,6 +281,7 @@ export default function Reservations() {
           .from('containers')
           .insert([{
             number: containerNumber,
+            reservation_number: reservationNumber,
             type: 'groupage',
             transitaire: data.transitaire,
             status: 'planning',
@@ -295,6 +302,7 @@ export default function Reservations() {
           .from('groupages')
           .insert([{
             container_id: containerData.id,
+            reservation_number: reservationNumber,
             transitaire: data.transitaire,
             max_space_pallets: maxPallets,
             available_space_pallets: maxPallets,
@@ -317,6 +325,7 @@ export default function Reservations() {
           .from('containers')
           .insert([{
             number: containerNumber,
+            reservation_number: reservationNumber,
             type: data.type,
             transitaire: data.transitaire,
             status: 'planning',
@@ -334,7 +343,7 @@ export default function Reservations() {
         if (error) throw error;
       }
 
-      toast({ title: "Succès", description: `Réservation créée avec succès (N° ${containerNumber})` });
+      toast({ title: "Succès", description: `Réservation créée avec succès (N° ${reservationNumber})` });
       setIsCreateReservationOpen(false);
       createReservationForm.reset();
       fetchData();
@@ -373,7 +382,8 @@ export default function Reservations() {
 
   const filteredReservations = reservations.filter(reservation => {
     const matchesSearch = reservation.container_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         reservation.transitaire.toLowerCase().includes(searchTerm.toLowerCase());
+                         reservation.transitaire.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (reservation.reservation_number && reservation.reservation_number.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === "all" || reservation.status === statusFilter;
     const matchesType = typeFilter === "all" || reservation.type === typeFilter;
     const matchesTransitaire = transitaireFilter === "all" || reservation.transitaire === transitaireFilter;
@@ -598,6 +608,7 @@ export default function Reservations() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>N° Réservation</TableHead>
                   <TableHead>N° Conteneur</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Transitaire</TableHead>
@@ -611,13 +622,13 @@ export default function Reservations() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       Chargement...
                     </TableCell>
                   </TableRow>
                 ) : filteredReservations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       Aucune réservation trouvée
                     </TableCell>
                   </TableRow>
@@ -626,11 +637,14 @@ export default function Reservations() {
                     const usedPallets = reservation.max_pallets - reservation.available_pallets;
                     const usagePercentage = reservation.max_pallets > 0 ? (usedPallets / reservation.max_pallets) * 100 : 0;
 
-                    return (
-                      <TableRow key={reservation.id}>
-                        <TableCell>
-                          <div className="font-medium">{reservation.container_number}</div>
-                        </TableCell>
+                     return (
+                       <TableRow key={reservation.id}>
+                         <TableCell>
+                           <div className="font-medium">{reservation.reservation_number || "N/A"}</div>
+                         </TableCell>
+                         <TableCell>
+                           <div className="font-medium">{reservation.container_number}</div>
+                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{getTypeLabel(reservation.type)}</Badge>
                         </TableCell>
@@ -718,6 +732,12 @@ export default function Reservations() {
 
             <form onSubmit={createReservationForm.handleSubmit(handleCreateReservation)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Numéro de réservation</Label>
+                  <div className="p-2 bg-muted rounded-md text-sm text-muted-foreground">
+                    Généré automatiquement à la création (ex: RES-0011)
+                  </div>
+                </div>
                 <div>
                   <Label>Numéro de conteneur</Label>
                   <div className="p-2 bg-muted rounded-md text-sm text-muted-foreground">

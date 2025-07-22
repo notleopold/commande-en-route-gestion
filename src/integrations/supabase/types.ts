@@ -153,6 +153,7 @@ export type Database = {
           max_weight: number | null
           number: string
           port_cutoff: string | null
+          reservation_number: string | null
           status: string | null
           transitaire: string
           type: string
@@ -171,6 +172,7 @@ export type Database = {
           max_weight?: number | null
           number: string
           port_cutoff?: string | null
+          reservation_number?: string | null
           status?: string | null
           transitaire: string
           type: string
@@ -189,6 +191,7 @@ export type Database = {
           max_weight?: number | null
           number?: string
           port_cutoff?: string | null
+          reservation_number?: string | null
           status?: string | null
           transitaire?: string
           type?: string
@@ -316,6 +319,7 @@ export type Database = {
           max_volume: number
           max_weight: number
           notes: string | null
+          reservation_number: string | null
           status: string | null
           transitaire: string
           updated_at: string
@@ -337,6 +341,7 @@ export type Database = {
           max_volume?: number
           max_weight?: number
           notes?: string | null
+          reservation_number?: string | null
           status?: string | null
           transitaire: string
           updated_at?: string
@@ -358,6 +363,7 @@ export type Database = {
           max_volume?: number
           max_weight?: number
           notes?: string | null
+          reservation_number?: string | null
           status?: string | null
           transitaire?: string
           updated_at?: string
