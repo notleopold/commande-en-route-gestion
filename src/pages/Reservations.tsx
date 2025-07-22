@@ -478,7 +478,17 @@ export default function Reservations() {
           .eq('id', reservationToDelete.id)
           .single();
 
-        // Supprimer le groupage
+        // Supprimer d'abord la référence au container dans groupage (mettre à null)
+        if (groupageData?.container_id) {
+          const { error: updateError } = await supabase
+            .from('groupages')
+            .update({ container_id: null })
+            .eq('id', reservationToDelete.id);
+
+          if (updateError) throw updateError;
+        }
+
+        // Puis supprimer le groupage
         const { error: groupageError } = await supabase
           .from('groupages')
           .delete()
@@ -486,7 +496,7 @@ export default function Reservations() {
 
         if (groupageError) throw groupageError;
 
-        // Supprimer le conteneur associé s'il existe
+        // Enfin supprimer le conteneur associé s'il existe
         if (groupageData?.container_id) {
           const { error: containerError } = await supabase
             .from('containers')
