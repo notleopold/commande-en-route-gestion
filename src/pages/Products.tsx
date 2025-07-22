@@ -31,7 +31,7 @@ interface Product {
   unit: string;
   cost: number;
   suppliers: string[];
-  transitaire?: string;
+  
   status: string;
   description?: string;
   // Packaging details
@@ -79,9 +79,7 @@ export default function Products() {
   const { categories } = useCategories();
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<{id: string, name: string}[]>([]);
-  const [transitaires, setTransitaires] = useState<{id: string, name: string}[]>([]);
   const [supplierSearch, setSupplierSearch] = useState("");
-  const [transitaireSearch, setTransitaireSearch] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [showArchived, setShowArchived] = useState(false);
@@ -98,11 +96,6 @@ export default function Products() {
     );
   }, [suppliers, supplierSearch]);
 
-  const filteredTransitaires = useMemo(() => {
-    return transitaires.filter(transitaire => 
-      transitaire.name.toLowerCase().includes(transitaireSearch.toLowerCase())
-    );
-  }, [transitaires, transitaireSearch]);
 
 
   const form = useForm({
@@ -115,7 +108,7 @@ export default function Products() {
       unit: "",
       cost: "",
       suppliers: [] as string[],
-      transitaire: "",
+      
       description: "",
       // Package level
       units_per_package: "",
@@ -151,7 +144,6 @@ export default function Products() {
   useEffect(() => {
     fetchProducts();
     fetchSuppliers();
-    fetchTransitaires();
   }, []);
 
   const fetchProducts = async () => {
@@ -196,20 +188,6 @@ export default function Products() {
     }
   };
 
-  const fetchTransitaires = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('transitaires')
-        .select('id, name')
-        .eq('status', 'active')
-        .order('name');
-      
-      if (error) throw error;
-      setTransitaires(data || []);
-    } catch (error) {
-      console.error('Error fetching transitaires:', error);
-    }
-  };
 
   const handleAddProduct = () => {
     form.reset();
@@ -231,7 +209,7 @@ export default function Products() {
         unit: data.unit,
         cost: parseFloat(data.cost),
         suppliers: data.suppliers || [],
-        transitaire: data.transitaire === "none" ? null : data.transitaire || null,
+        
         description: data.description,
         status: "active",
         units_per_package: data.units_per_package ? parseInt(data.units_per_package) : null,
