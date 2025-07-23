@@ -99,6 +99,10 @@ const Suppliers = () => {
       transport_partners: "",
       packaging_specs: "",
       reliability_rating: 3,
+      delivery_rate: 0,
+      total_orders: 0,
+      incidents_count: 0,
+      last_order_date: "",
       notes: "",
     }
   });
@@ -252,6 +256,10 @@ const Suppliers = () => {
       transport_partners: supplier.transport_partners,
       packaging_specs: supplier.packaging_specs,
       reliability_rating: supplier.reliability_rating || 3,
+      delivery_rate: supplier.delivery_rate || 0,
+      total_orders: supplier.total_orders || 0,
+      incidents_count: supplier.incidents_count || 0,
+      last_order_date: supplier.last_order_date || "",
       notes: supplier.notes,
     });
   };
