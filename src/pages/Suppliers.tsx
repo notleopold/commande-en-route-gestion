@@ -11,11 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
-import { Building2, Plus, Search, Filter, Edit, Archive, Eye, Star, Trash2, AlertTriangle } from "lucide-react";
+import { Building2, Plus, Search, Filter, Edit, Archive, Eye, Star, Trash2, AlertTriangle, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/Layout";
 import { useNavigate } from "react-router-dom";
+import { SupplierDashboard } from "@/components/SupplierDashboard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Supplier {
   id: string;
@@ -258,7 +260,6 @@ const Suppliers = () => {
     if (!supplierToDelete) return;
 
     try {
-      // Move to trash instead of permanent delete
       const { error } = await supabase.rpc('move_to_trash', {
         p_table_name: 'suppliers',
         p_item_id: supplierToDelete.id,
@@ -328,685 +329,816 @@ const Suppliers = () => {
     <Layout title="Fournisseurs">
       <div>
         <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Fournisseurs</h1>
-          <p className="text-muted-foreground mt-2">
-            Gérez vos fournisseurs et partenaires commerciaux
-          </p>
-        </div>
+          <div>
+            <h1 className="text-3xl font-bold">Fournisseurs</h1>
+            <p className="text-muted-foreground mt-2">
+              Gérez vos fournisseurs et partenaires commerciaux
+            </p>
+          </div>
 
-        <Dialog open={isCreateDialogOpen || !!editingSupplier} onOpenChange={(open) => {
-          if (!open) {
-            setIsCreateDialogOpen(false);
-            setEditingSupplier(null);
-            form.reset();
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouveau fournisseur
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingSupplier ? "Modifier le fournisseur" : "Nouveau fournisseur"}
-              </DialogTitle>
-            </DialogHeader>
-
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(editingSupplier ? handleEditSupplier : handleCreateSupplier)} className="space-y-6">
-                
-                {/* General Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">📌 Informations générales</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nom du fournisseur *</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="ex: TechnoSupply Ltd" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="country"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Pays</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Sélectionner un pays" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {countries.map(country => (
-                                  <SelectItem key={country} value={country}>
-                                    {country}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Adresse complète</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} placeholder="Adresse complète du fournisseur" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="status"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Statut</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="active">Actif</SelectItem>
-                                <SelectItem value="inactive">Inactif</SelectItem>
-                                <SelectItem value="under_testing">En test</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="exclusive_to_client"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">Exclusif à un client ?</FormLabel>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {form.watch("exclusive_to_client") && (
-                      <FormField
-                        control={form.control}
-                        name="associated_clients"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Clients associés *</FormLabel>
-                            <div className="grid grid-cols-2 gap-3 border rounded-lg p-4 max-h-40 overflow-y-auto">
-                              {clients.map(client => {
-                                const isChecked = field.value?.includes(client.id) || false;
-                                
-                                return (
-                                  <div key={client.id} className="flex items-center space-x-2">
-                                    <Checkbox
-                                      id={client.id}
-                                      checked={isChecked}
-                                      onCheckedChange={(checked) => {
-                                        const currentValues = field.value || [];
-                                        if (checked) {
-                                          field.onChange([...currentValues, client.id]);
-                                        } else {
-                                          field.onChange(currentValues.filter((id: string) => id !== client.id));
-                                        }
-                                      }}
-                                    />
-                                    <label 
-                                      htmlFor={client.id}
-                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                                    >
-                                      {client.name}
-                                    </label>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                            {clients.length === 0 && (
-                              <p className="text-sm text-muted-foreground">Aucun client disponible. Ajoutez d'abord des clients.</p>
-                            )}
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Contact Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">📞 Informations de contact</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="main_contact_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nom du contact principal</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="ex: John Doe" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="position"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Poste/Rôle</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="ex: Sales Manager" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="email" placeholder="contact@supplier.com" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="phone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Téléphone</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="tel" placeholder="+33 1 23 45 67 89" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="preferred_communication"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Canal de communication préféré</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {communicationChannels.map(channel => (
-                                <SelectItem key={channel} value={channel}>
-                                  {channel}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Commercial Terms */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">💰 Conditions commerciales</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="payment_method"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Méthode de paiement</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="ex: Virement bancaire" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="incoterm"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Incoterm standard</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {incoterms.map(term => (
-                                  <SelectItem key={term} value={term}>
-                                    {term}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="payment_conditions"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Conditions de paiement</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} placeholder="ex: 30% à la commande, 70% avant expédition" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="currency"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Devise principale</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {currencies.map(currency => (
-                                  <SelectItem key={currency} value={currency}>
-                                    {currency}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="preparation_time"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Délai de préparation (jours)</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="number" min="0" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="minimum_order_amount"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Commande minimum (montant)</FormLabel>
-                            <FormControl>
-                              <Input {...field} type="number" min="0" step="0.01" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Logistics & Shipping */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">🚚 Logistique et expédition</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="shipping_origin"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Lieu d'expédition</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="ex: Shanghai, Chine" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="ships_themselves"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">Expédie lui-même ?</FormLabel>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="transport_partners"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Partenaires de transport habituels</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="ex: DHL, FedEx, transporteur local" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="packaging_specs"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Spécifications d'emballage</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} placeholder="Spécifications d'emballage standard" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Rating */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">📈 Évaluation</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <FormField
-                      control={form.control}
-                      name="reliability_rating"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Note de fiabilité (1-5)</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {[1, 2, 3, 4, 5].map(rating => (
-                                <SelectItem key={rating} value={rating.toString()}>
-                                  {rating} - {rating === 1 ? "Très faible" : rating === 2 ? "Faible" : rating === 3 ? "Moyen" : rating === 4 ? "Bon" : "Excellent"}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Notes */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">📁 Notes et observations</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Notes internes</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} placeholder="Commentaires internes et observations" rows={4} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => {
-                    setIsCreateDialogOpen(false);
-                    setEditingSupplier(null);
-                    form.reset();
-                  }}>
-                    Annuler
-                  </Button>
-                  <Button type="submit">
-                    {editingSupplier ? "Modifier" : "Créer"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-4 mb-6">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Rechercher par nom, contact, pays..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filtrer par statut" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous les statuts</SelectItem>
-            <SelectItem value="active">Actif</SelectItem>
-            <SelectItem value="inactive">Inactif</SelectItem>
-            <SelectItem value="under_testing">En test</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Suppliers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredSuppliers.map((supplier) => (
-          <Card 
-            key={supplier.id} 
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => navigate(`/suppliers/${supplier.id}`)}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{supplier.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{supplier.country}</p>
-                </div>
-                {getStatusBadge(supplier.status)}
-              </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-sm font-medium">Contact principal</p>
-                <p className="text-sm text-muted-foreground">
-                  {supplier.main_contact_name} - {supplier.position}
-                </p>
-                <p className="text-sm text-muted-foreground">{supplier.email}</p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium">Conditions</p>
-                <p className="text-sm text-muted-foreground">
-                  {supplier.incoterm} - {supplier.currency}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Délai: {supplier.preparation_time} jours
-                </p>
-              </div>
-
-              {supplier.exclusive_to_client && (
-                <div>
-                  <Badge variant="outline" className="text-xs mb-2">
-                    Exclusif client
-                  </Badge>
-                  {supplier.associated_clients && supplier.associated_clients.length > 0 && (
-                    <div className="text-xs text-muted-foreground">
-                      Clients: {supplier.associated_clients.map(clientId => {
-                        const client = clients.find(c => c.id === clientId);
-                        return client?.name;
-                      }).filter(Boolean).join(", ")}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-medium">Fiabilité:</span>
-                <div className="flex">
-                  {getRatingStars(supplier.reliability_rating || 0)}
-                </div>
-              </div>
-
-              <div className="flex justify-between gap-2 pt-2">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/suppliers/${supplier.id}`);
-                  }}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  Voir
-                </Button>
-                <div className="flex gap-1">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openEditDialog(supplier);
-                    }}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openDeleteDialog(supplier);
-                    }}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {filteredSuppliers.length === 0 && (
-        <div className="text-center py-12">
-          <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">Aucun fournisseur trouvé</h3>
-          <p className="text-muted-foreground mb-4">
-            {searchQuery || statusFilter !== "all" 
-              ? "Aucun fournisseur ne correspond à vos critères de recherche."
-              : "Commencez par ajouter votre premier fournisseur."
+          <Dialog open={isCreateDialogOpen || !!editingSupplier} onOpenChange={(open) => {
+            if (!open) {
+              setIsCreateDialogOpen(false);
+              setEditingSupplier(null);
+              form.reset();
             }
-          </p>
-          {(!searchQuery && statusFilter === "all") && (
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Ajouter un fournisseur
-            </Button>
-          )}
+          }}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nouveau fournisseur
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingSupplier ? "Modifier le fournisseur" : "Nouveau fournisseur"}
+                </DialogTitle>
+              </DialogHeader>
+
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(editingSupplier ? handleEditSupplier : handleCreateSupplier)} className="space-y-6">
+                  
+                  {/* General Information */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">📌 Informations générales</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nom du fournisseur *</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="ex: TechnoSupply Ltd" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="country"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Pays</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner un pays" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {countries.map(country => (
+                                    <SelectItem key={country} value={country}>
+                                      {country}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="address"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Adresse complète</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} placeholder="Adresse complète du fournisseur" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="status"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Statut</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="active">Actif</SelectItem>
+                                  <SelectItem value="inactive">Inactif</SelectItem>
+                                  <SelectItem value="under_testing">En test</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="exclusive_to_client"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">Exclusif à un client ?</FormLabel>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      {form.watch("exclusive_to_client") && (
+                        <FormField
+                          control={form.control}
+                          name="associated_clients"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Clients associés *</FormLabel>
+                              <div className="grid grid-cols-2 gap-3 border rounded-lg p-4 max-h-40 overflow-y-auto">
+                                {clients.map(client => {
+                                  const isChecked = field.value?.includes(client.id) || false;
+                                  
+                                  return (
+                                    <div key={client.id} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={client.id}
+                                        checked={isChecked}
+                                        onCheckedChange={(checked) => {
+                                          const currentValues = field.value || [];
+                                          if (checked) {
+                                            field.onChange([...currentValues, client.id]);
+                                          } else {
+                                            field.onChange(currentValues.filter((id: string) => id !== client.id));
+                                          }
+                                        }}
+                                      />
+                                      <label 
+                                        htmlFor={client.id}
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                      >
+                                        {client.name}
+                                      </label>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {clients.length === 0 && (
+                                <p className="text-sm text-muted-foreground">Aucun client disponible. Ajoutez d'abord des clients.</p>
+                              )}
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="product_types"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Types de produits</FormLabel>
+                              <div className="grid grid-cols-2 gap-3 border rounded-lg p-4 max-h-40 overflow-y-auto">
+                                {productTypes.map(type => {
+                                  const isChecked = field.value?.includes(type) || false;
+                                  
+                                  return (
+                                    <div key={type} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={type}
+                                        checked={isChecked}
+                                        onCheckedChange={(checked) => {
+                                          const currentValues = field.value || [];
+                                          if (checked) {
+                                            field.onChange([...currentValues, type]);
+                                          } else {
+                                            field.onChange(currentValues.filter((t: string) => t !== type));
+                                          }
+                                        }}
+                                      />
+                                      <label 
+                                        htmlFor={type}
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                      >
+                                        {type}
+                                      </label>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Contact Information */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">📞 Informations de contact</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="main_contact_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nom du contact principal</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="ex: John Doe" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="position"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Poste/Rôle</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="ex: Sales Manager" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="email" placeholder="contact@supplier.com" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Téléphone</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="tel" placeholder="+33 1 23 45 67 89" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="preferred_communication"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Canal de communication préféré</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {communicationChannels.map(channel => (
+                                  <SelectItem key={channel} value={channel}>
+                                    {channel}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {/* Commercial Terms */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">💰 Conditions commerciales</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="payment_method"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Méthode de paiement</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="ex: Virement bancaire" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="incoterm"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Incoterm standard</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {incoterms.map(term => (
+                                    <SelectItem key={term} value={term}>
+                                      {term}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="payment_conditions"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Conditions de paiement</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} placeholder="ex: 30% à la commande, 70% avant expédition" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="currency"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Devise principale</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {currencies.map(currency => (
+                                    <SelectItem key={currency} value={currency}>
+                                      {currency}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="preparation_time"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Délai de préparation (jours)</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="number" min="0" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="minimum_order_amount"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Commande minimum (montant)</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="number" min="0" step="0.01" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="minimum_order_quantity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Quantité minimum de commande</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="number" min="0" placeholder="ex: 100" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {/* Logistics & Shipping */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">🚚 Logistique et expédition</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="shipping_origin"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Lieu d'expédition</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="ex: Shanghai, Chine" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="ships_themselves"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">Expédie lui-même ?</FormLabel>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="transport_partners"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Partenaires de transport habituels</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="ex: DHL, FedEx, transporteur local" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="packaging_specs"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Spécifications d'emballage</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} placeholder="Spécifications d'emballage standard" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {/* Performance Metrics */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">📈 Métriques de performance</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="reliability_rating"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Note de fiabilité (1-5)</FormLabel>
+                              <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {[1, 2, 3, 4, 5].map(rating => (
+                                    <SelectItem key={rating} value={rating.toString()}>
+                                      {rating} - {rating === 1 ? "Très faible" : rating === 2 ? "Faible" : rating === 3 ? "Moyen" : rating === 4 ? "Bon" : "Excellent"}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="delivery_rate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Taux de livraison (%)</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="number" min="0" max="100" step="0.1" placeholder="ex: 95.5" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="total_orders"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nombre total de commandes</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="number" min="0" placeholder="ex: 150" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="incidents_count"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nombre d'incidents</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="number" min="0" placeholder="ex: 2" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="last_order_date"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Date de dernière commande</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="date" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Notes */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">📁 Notes et observations</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <FormField
+                        control={form.control}
+                        name="notes"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Notes internes</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} placeholder="Commentaires internes et observations" rows={4} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => {
+                      setIsCreateDialogOpen(false);
+                      setEditingSupplier(null);
+                      form.reset();
+                    }}>
+                      Annuler
+                    </Button>
+                    <Button type="submit">
+                      {editingSupplier ? "Modifier" : "Créer"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         </div>
-        )}
+
+        <Tabs defaultValue="list" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="list">Liste des fournisseurs</TabsTrigger>
+            <TabsTrigger value="dashboard">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Tableau de bord
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-6">
+            <SupplierDashboard />
+          </TabsContent>
+
+          <TabsContent value="list" className="space-y-6">
+            {/* Filters */}
+            <div className="flex gap-4 mb-6">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Rechercher par nom, contact, pays..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Filtrer par statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="active">Actif</SelectItem>
+                  <SelectItem value="inactive">Inactif</SelectItem>
+                  <SelectItem value="under_testing">En test</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Suppliers Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredSuppliers.map((supplier) => (
+                <Card 
+                  key={supplier.id} 
+                  className="hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => navigate(`/suppliers/${supplier.id}`)}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg">{supplier.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">{supplier.country}</p>
+                      </div>
+                      {getStatusBadge(supplier.status)}
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-3">
+                    <div>
+                      <p className="text-sm font-medium">Contact principal</p>
+                      <p className="text-sm text-muted-foreground">
+                        {supplier.main_contact_name} - {supplier.position}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{supplier.email}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-medium">Conditions</p>
+                      <p className="text-sm text-muted-foreground">
+                        {supplier.incoterm} - {supplier.currency}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Délai: {supplier.preparation_time} jours
+                      </p>
+                    </div>
+
+                    {supplier.exclusive_to_client && (
+                      <div>
+                        <Badge variant="outline" className="text-xs mb-2">
+                          Exclusif client
+                        </Badge>
+                        {supplier.associated_clients && supplier.associated_clients.length > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            Clients: {supplier.associated_clients.map(clientId => {
+                              const client = clients.find(c => c.id === clientId);
+                              return client?.name;
+                            }).filter(Boolean).join(", ")}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-medium">Fiabilité:</span>
+                      <div className="flex">
+                        {getRatingStars(supplier.reliability_rating || 0)}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between gap-2 pt-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/suppliers/${supplier.id}`);
+                        }}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Voir
+                      </Button>
+                      <div className="flex gap-1">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditDialog(supplier);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteDialog(supplier);
+                          }}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {filteredSuppliers.length === 0 && (
+              <div className="text-center py-12">
+                <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">Aucun fournisseur trouvé</h3>
+                <p className="text-muted-foreground mb-4">
+                  {searchQuery || statusFilter !== "all" 
+                    ? "Aucun fournisseur ne correspond à vos critères de recherche."
+                    : "Commencez par ajouter votre premier fournisseur."
+                  }
+                </p>
+                {(!searchQuery && statusFilter === "all") && (
+                  <Button onClick={() => setIsCreateDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter un fournisseur
+                  </Button>
+                )}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Delete Confirmation Dialog */}
@@ -1019,27 +1151,27 @@ const Suppliers = () => {
                 ATTENTION CETTE ACTION EST IRRÉVERSIBLE
               </AlertDialogTitle>
             </div>
-              <AlertDialogDescription className="text-lg">
-                Êtes-vous certain de vouloir supprimer le fournisseur{" "}
-                <span className="font-bold text-destructive">
-                  {supplierToDelete?.name}
-                </span>
-                ?
-                <br />
-                <br />
-                <span className="text-sm text-muted-foreground">
-                  Le fournisseur sera déplacé vers la corbeille et pourra être restauré pendant 45 jours par un administrateur.
-                </span>
-              </AlertDialogDescription>
+            <AlertDialogDescription className="text-lg">
+              Êtes-vous certain de vouloir supprimer le fournisseur{" "}
+              <span className="font-bold text-destructive">
+                {supplierToDelete?.name}
+              </span>
+              ?
+              <br />
+              <br />
+              <span className="text-sm text-muted-foreground">
+                Le fournisseur sera déplacé vers la corbeille et pourra être restauré pendant 45 jours par un administrateur.
+              </span>
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={handleDeleteSupplier}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                Oui, déplacer vers la corbeille
-              </AlertDialogAction>
+            <AlertDialogAction 
+              onClick={handleDeleteSupplier}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Oui, déplacer vers la corbeille
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
