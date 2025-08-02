@@ -12,6 +12,8 @@ import OrderDetail from "./pages/OrderDetail";
 import ReservationDetail from "./pages/ReservationDetail";
 import ProductDetail from "./pages/ProductDetail";
 import Products from "./pages/Products";
+import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
 import Clients from "./pages/Clients";
 import Orders from "./pages/Orders";
 import Reservations from "./pages/Reservations";
@@ -43,6 +45,8 @@ const App = () => {
           
           <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/products" element={<Products />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/projects/:id" element={<ProjectDetail />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/transitaires" element={<Transitaires />} />
