@@ -18,16 +18,21 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Plus, Search, Edit, Trash2, UserPlus, Shield, Mail, AlertCircle } from "lucide-react";
 
+type UserRole = 'admin' | 'moderator' | 'user' | 'purchaser' | 'purchase_manager' | 'purchase_director';
+type BasicRole = 'admin' | 'moderator' | 'user';
+
 interface UserData {
   id: string;
   full_name: string;
   email: string;
   phone?: string;
   department?: string;
-  role: 'admin' | 'moderator' | 'user';
-  disabled: boolean;
+  role: UserRole;
+  disabled?: boolean;
   last_login_at?: string;
   created_at: string;
+  approval_limit?: number;
+  can_approve_orders?: boolean;
 }
 
 const Users = () => {
@@ -47,14 +52,14 @@ const Users = () => {
     last_name: "",
     email: "",
     password: "",
-    role: "user" as 'admin' | 'moderator' | 'user'
+    role: "user" as UserRole
   });
 
   const [editUserForm, setEditUserForm] = useState({
     full_name: "",
     phone: "",
     department: "",
-    role: "user" as 'admin' | 'moderator' | 'user'
+    role: "user" as UserRole
   });
 
   useEffect(() => {
@@ -65,23 +70,34 @@ const Users = () => {
 
   const fetchUsers = async () => {
     try {
-      // Get profiles with their roles
+      // Get profiles first
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          user_roles (role)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;
 
-      // Transform the data to match expected format
+      // Get user roles separately
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) throw rolesError;
+
+      // Create a map of user roles
+      const roleMap = new Map();
+      userRoles?.forEach(ur => {
+        roleMap.set(ur.user_id, ur.role);
+      });
+
+      // Transform the data to match expected format  
       const users = profiles?.map(profile => ({
         ...profile,
-        role: (profile.user_roles as any)?.[0]?.role || 'user',
-        disabled: false, // For now, we'll set this to false since we can't easily check auth status
-        email_confirmed: true
+        role: roleMap.get(profile.id) || profile.role || 'user', // Use user_roles first, then fallback to profile.role
+        disabled: (profile as any).disabled || false, // Cast to any since disabled might not exist yet
+        approval_limit: (profile as any).approval_limit,
+        can_approve_orders: (profile as any).can_approve_orders || false
       })) || [];
 
       setUsers(users);
@@ -197,6 +213,12 @@ const Users = () => {
         return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Manager</Badge>;
       case "user":
         return <Badge variant="outline">Membre</Badge>;
+      case "purchaser":
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Acheteur</Badge>;
+      case "purchase_manager":
+        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Manager Achats</Badge>;
+      case "purchase_director":
+        return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Directeur Achats</Badge>;
       default:
         return <Badge variant="secondary">{role}</Badge>;
     }
@@ -319,7 +341,7 @@ const Users = () => {
                     <Label htmlFor="role">Rôle *</Label>
                     <Select 
                       value={newUserForm.role} 
-                      onValueChange={(value: 'admin' | 'moderator' | 'user') => 
+                      onValueChange={(value: UserRole) => 
                         setNewUserForm(prev => ({...prev, role: value}))
                       }
                     >
@@ -330,6 +352,9 @@ const Users = () => {
                         <SelectItem value="user">Membre</SelectItem>
                         <SelectItem value="moderator">Manager</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="purchaser">Acheteur</SelectItem>
+                        <SelectItem value="purchase_manager">Manager Achats</SelectItem>
+                        <SelectItem value="purchase_director">Directeur Achats</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -501,7 +526,7 @@ const Users = () => {
                   <Label htmlFor="edit-role">Rôle</Label>
                   <Select 
                     value={editUserForm.role} 
-                    onValueChange={(value: 'admin' | 'moderator' | 'user') => 
+                    onValueChange={(value: UserRole) => 
                       setEditUserForm(prev => ({...prev, role: value}))
                     }
                   >
@@ -512,6 +537,9 @@ const Users = () => {
                       <SelectItem value="user">Membre</SelectItem>
                       <SelectItem value="moderator">Manager</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="purchaser">Acheteur</SelectItem>
+                      <SelectItem value="purchase_manager">Manager Achats</SelectItem>
+                      <SelectItem value="purchase_director">Directeur Achats</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
