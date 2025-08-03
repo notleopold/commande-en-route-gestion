@@ -81,7 +81,7 @@ const Users = () => {
 
       // Get user roles separately
       const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
+        .from('user_roles_cache')
         .select('user_id, role');
 
       if (rolesError) throw rolesError;
