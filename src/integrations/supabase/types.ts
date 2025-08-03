@@ -55,6 +55,33 @@ export type Database = {
           },
         ]
       }
+      approval_limits: {
+        Row: {
+          created_at: string
+          currency: string
+          id: string
+          max_amount: number
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          id?: string
+          max_amount?: number
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          id?: string
+          max_amount?: number
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -776,8 +803,11 @@ export type Database = {
       }
       profiles: {
         Row: {
+          approval_limit: number | null
+          can_approve_orders: boolean | null
           created_at: string
           department: string | null
+          disabled: boolean | null
           email: string
           full_name: string | null
           id: string
@@ -787,8 +817,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approval_limit?: number | null
+          can_approve_orders?: boolean | null
           created_at?: string
           department?: string | null
+          disabled?: boolean | null
           email: string
           full_name?: string | null
           id: string
@@ -798,8 +831,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approval_limit?: number | null
+          can_approve_orders?: boolean | null
           created_at?: string
           department?: string | null
+          disabled?: boolean | null
           email?: string
           full_name?: string | null
           id?: string
