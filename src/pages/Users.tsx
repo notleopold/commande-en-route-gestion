@@ -101,6 +101,8 @@ const Users = () => {
         can_approve_orders: (profile as any).can_approve_orders || false
       })) || [];
 
+      console.log("👥 Users fetched:", users);
+
       setUsers(users);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -457,6 +459,7 @@ const Users = () => {
                     <TableHead>Utilisateur</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Rôle</TableHead>
+                    <TableHead>Département</TableHead>
                     <TableHead>Dernière Connexion</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -485,6 +488,7 @@ const Users = () => {
                         </div>
                       </TableCell>
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
+                      <TableCell>{user.department || "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatLastLogin(user.last_login_at)}
                       </TableCell>
