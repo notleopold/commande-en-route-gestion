@@ -516,11 +516,22 @@ const Users = () => {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-department">Département</Label>
-                  <Input 
-                    id="edit-department" 
+                  <Select
                     value={editUserForm.department}
-                    onChange={(e) => setEditUserForm(prev => ({...prev, department: e.target.value}))}
-                  />
+                    onValueChange={(value: string) =>
+                      setEditUserForm((prev) => ({ ...prev, department: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="informatique">Direction</SelectItem>
+                      <SelectItem value="rh">Achats</SelectItem>
+                      <SelectItem value="logistique">Logistique</SelectItem>
+                      <SelectItem value="finance">Finance</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-role">Rôle</Label>
