@@ -52,6 +52,7 @@ const Users = () => {
     last_name: "",
     email: "",
     password: "",
+    department: "",
     role: "user" as UserRole
   });
 
@@ -110,7 +111,7 @@ const Users = () => {
   };
 
   const handleCreateUser = async () => {
-    if (!newUserForm.first_name || !newUserForm.last_name || !newUserForm.email || !newUserForm.password) {
+    if (!newUserForm.first_name || !newUserForm.last_name || !newUserForm.email || !newUserForm.password || !newUserForm.department || !newUserForm.role) {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
@@ -123,7 +124,8 @@ const Users = () => {
           email: newUserForm.email,
           password: newUserForm.password,
           full_name: `${newUserForm.first_name} ${newUserForm.last_name}`,
-          role: newUserForm.role
+          role: newUserForm.role,
+          department: newUserForm.department
         }
       });
 
@@ -131,7 +133,7 @@ const Users = () => {
 
       toast.success('Utilisateur créé avec succès');
       setIsNewUserOpen(false);
-      setNewUserForm({ first_name: "", last_name: "", email: "", password: "", role: "user" });
+      setNewUserForm({ first_name: "", last_name: "", email: "", password: "", department: "", role: "user" });
       await fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
@@ -355,6 +357,25 @@ const Users = () => {
                         <SelectItem value="purchaser">Acheteur</SelectItem>
                         <SelectItem value="purchase_manager">Manager Achats</SelectItem>
                         <SelectItem value="purchase_director">Directeur Achats</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="department">Département</Label>
+                    <Select
+                      value={newUserForm.department}
+                      onValueChange={(value) =>
+                        setNewUserForm(prev => ({ ...prev, department: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner le département" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="informatique">Direction</SelectItem>
+                        <SelectItem value="rh">Achats</SelectItem>
+                        <SelectItem value="logistique">Logistique</SelectItem>
+                        <SelectItem value="finance">Finance</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
