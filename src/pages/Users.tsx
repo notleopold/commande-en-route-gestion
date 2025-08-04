@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,10 +82,12 @@ const Users = () => {
 
       // Get user roles separately
       const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles_cache')
+        .from('user_roles')
         .select('user_id, role');
 
-      if (rolesError) throw rolesError;
+      if (rolesError) {
+        console.warn('Error fetching user roles:', rolesError);
+      }
 
       // Create a map of user roles
       const roleMap = new Map();
@@ -96,9 +99,9 @@ const Users = () => {
       const users = profiles?.map(profile => ({
         ...profile,
         role: roleMap.get(profile.id) || profile.role || 'user', // Use user_roles first, then fallback to profile.role
-        disabled: (profile as any).disabled || false, // Cast to any since disabled might not exist yet
-        approval_limit: (profile as any).approval_limit,
-        can_approve_orders: (profile as any).can_approve_orders || false
+        disabled: profile.disabled || false,
+        approval_limit: profile.approval_limit,
+        can_approve_orders: profile.can_approve_orders || false
       })) || [];
 
       console.log("👥 Users fetched:", users);
@@ -239,6 +242,21 @@ const Users = () => {
       return format(new Date(lastLogin), "dd/MM/yyyy à HH:mm", { locale: fr });
     } catch {
       return "Date invalide";
+    }
+  };
+
+  const getDepartmentLabel = (department?: string) => {
+    switch (department) {
+      case "informatique":
+        return "Direction";
+      case "rh":
+        return "Achats";
+      case "logistique":
+        return "Logistique";
+      case "finance":
+        return "Finance";
+      default:
+        return department || "—";
     }
   };
 
@@ -488,7 +506,7 @@ const Users = () => {
                         </div>
                       </TableCell>
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
-                      <TableCell>{user.department || "—"}</TableCell>
+                      <TableCell>{getDepartmentLabel(user.department)}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatLastLogin(user.last_login_at)}
                       </TableCell>
