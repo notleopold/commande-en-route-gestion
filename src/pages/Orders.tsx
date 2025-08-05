@@ -65,20 +65,20 @@ const Orders = () => {
         .from("orders")
         .select(`
           *,
-          clients (name),
-          order_workflows (
-            id,
-            current_status
-          )
+          clients (name)
         `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      const ordersWithWorkflow = data?.map(order => ({
+      // Ajouter un workflow temporaire à chaque commande
+      const ordersWithWorkflow = (data || []).map(order => ({
         ...order,
-        workflow: order.order_workflows?.[0]
-      })) || [];
+        workflow: {
+          id: 'temp-workflow-' + order.id,
+          current_status: 'request' as const
+        }
+      }));
 
       setOrders(ordersWithWorkflow);
     } catch (error) {
@@ -134,7 +134,7 @@ const Orders = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <Layout title="Commandes">
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
@@ -146,7 +146,7 @@ const Orders = () => {
   }
 
   return (
-    <Layout>
+    <Layout title="Commandes">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>

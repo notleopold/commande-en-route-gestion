@@ -43,7 +43,7 @@ export function useUserRole() {
             setUserRole('membre');
           }
         } else {
-          setUserRole(data || 'membre');
+          setUserRole((data as UserRole) || 'membre');
         }
       } catch (error) {
         console.error('Error in fetchUserRole:', error);

@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,30 +68,6 @@ const modules = [
 export function PermissionsManager({ userId, userRole, onPermissionChange }: PermissionsManagerProps) {
   const [userPermissions, setUserPermissions] = useState<Record<string, boolean>>({});
   const { updatePermission } = usePermissions();
-
-  useEffect(() => {
-    fetchUserPermissions();
-  }, [userId]);
-
-  const fetchUserPermissions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('user_permissions')
-        .select('module, action, granted')
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      const permissionsMap: Record<string, boolean> = {};
-      data?.forEach(perm => {
-        permissionsMap[`${perm.module}.${perm.action}`] = perm.granted;
-      });
-
-      setUserPermissions(permissionsMap);
-    } catch (error) {
-      console.error('Error fetching user permissions:', error);
-    }
-  };
 
   const getPermissionValue = (module: string, action: string): boolean => {
     const key = `${module}.${action}`;
