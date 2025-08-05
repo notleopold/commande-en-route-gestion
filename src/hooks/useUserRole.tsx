@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type UserRole = 'admin' | 'moderator' | 'user' | null;
+export type UserRole = 'admin' | 'manager' | 'membre' | null;
 
 export function useUserRole() {
   const [userRole, setUserRole] = useState<UserRole>(null);
@@ -18,7 +19,7 @@ export function useUserRole() {
           return;
         }
 
-        // First try to get the user's role
+        // Récupérer le rôle depuis la nouvelle table user_roles
         const { data, error } = await supabase
           .rpc('get_user_role', { _user_id: user.id });
 
@@ -26,27 +27,27 @@ export function useUserRole() {
           console.error('Error fetching user role:', error);
         }
 
-        // If no role found, call the assign-admin-role function
+        // Si aucun rôle trouvé, assigner le rôle admin via la fonction
         if (!data) {
           try {
             const { data: assignData, error: assignError } = await supabase.functions.invoke('assign-admin-role');
             
             if (assignError) {
               console.error('Error assigning role:', assignError);
-              setUserRole('user'); // Default fallback
+              setUserRole('membre'); // Fallback par défaut
             } else {
-              setUserRole(assignData?.role || 'user');
+              setUserRole(assignData?.role || 'membre');
             }
           } catch (error) {
             console.error('Error in role assignment:', error);
-            setUserRole('user');
+            setUserRole('membre');
           }
         } else {
-          setUserRole(data || 'user');
+          setUserRole(data || 'membre');
         }
       } catch (error) {
         console.error('Error in fetchUserRole:', error);
-        setUserRole('user');
+        setUserRole('membre');
       } finally {
         setLoading(false);
       }
@@ -54,7 +55,7 @@ export function useUserRole() {
 
     fetchUserRole();
 
-    // Listen for auth changes
+    // Écouter les changements d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       fetchUserRole();
     });
@@ -63,14 +64,16 @@ export function useUserRole() {
   }, []);
 
   const isAdmin = userRole === 'admin';
-  const isModerator = userRole === 'moderator' || userRole === 'admin';
+  const isManager = userRole === 'manager' || userRole === 'admin';
+  const isMembre = userRole === 'membre';
   const hasRole = (role: UserRole) => userRole === role;
 
   return {
     userRole,
     loading,
     isAdmin,
-    isModerator,
+    isManager,
+    isMembre,
     hasRole
   };
 }

@@ -1370,9 +1370,31 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles_cache: {
+        Row: {
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      current_user_roles: {
+        Row: {
+          department: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_order_totals: {
@@ -1388,10 +1410,13 @@ export type Database = {
         Returns: Database["public"]["Enums"]["app_role"]
       }
       has_role: {
-        Args: {
-          _user_id: string
-          _role: Database["public"]["Enums"]["app_role"]
-        }
+        Args:
+          | { _user_id: string; _role: Database["public"]["Enums"]["app_role"] }
+          | { uid: string; role: string }
+        Returns: boolean
+      }
+      is_admin_or_manager: {
+        Args: { uid: string }
         Returns: boolean
       }
       move_to_trash: {
